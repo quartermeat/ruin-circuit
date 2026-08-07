@@ -64,11 +64,13 @@ The first fidget slice is now scaffolded in Ebitengine:
 - Right-click click-to-move movement
 - Sci-fi ruin floor, broken walls, and three dormant machine targets
 - Visible player combat chassis and movement marker
+- Grid collision against ruin walls
+- Breadth-first click-to-move pathfinding around obstacles
 - Q/W/E/R placeholder ability slots
 - Tab toggles a build workbench placeholder
 - WASM build script and browser entry point
 
-The current prototype is intentionally a movement-and-presentation slice. Combat, navigation around obstacles, enemy behavior, component purchases, crafting, the tech tree, and the six-slot loadout remain planned work.
+The current prototype is intentionally a movement-and-presentation slice. Combat, enemy behavior, component purchases, crafting, the tech tree, and the six-slot loadout remain planned work.
 
 ## Versioning
 

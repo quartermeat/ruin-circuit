@@ -1,6 +1,6 @@
 # Agent Instructions
 
-Before taking any action in this repository, read `README.md` completely. It is required reading and contains the current project direction, design constraints, controls, progression model, and initial scope.
+When an agent wakes up or begins a new work session in this repository, read `README.md` completely before taking the first action. It is required wake-up reading and contains the current project direction, design constraints, controls, progression model, and initial scope. It does not need to be reread for every prompt during the same session unless it has changed or a task requires refreshing its details.
 
 Keep implementation decisions consistent with the README. Update the README when the project direction or agreed design changes materially.
 

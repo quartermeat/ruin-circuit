@@ -15,8 +15,15 @@ import (
 const (
 	screenWidth  = 960
 	screenHeight = 540
-	version      = "v0.0.2"
+	gridWidth    = 28
+	gridHeight   = 14
+	tileSize     = 32
+	version      = "v0.1.0"
 )
+
+var ruinWalls = [][4]float64{{90, 90, 180, 18}, {90, 90, 18, 115}, {680, 80, 190, 18}, {850, 80, 18, 130}, {330, 420, 260, 18}, {330, 350, 18, 88}}
+
+type Cell struct{ x, y int }
 
 type Enemy struct {
 	x, y   float64
@@ -28,6 +35,8 @@ type Game struct {
 	playerX, playerY float64
 	targetX, targetY float64
 	hasTarget        bool
+	path             []Cell
+	pathIndex        int
 	enemies          []Enemy
 	showBuild        bool
 	message          string
@@ -35,8 +44,8 @@ type Game struct {
 
 func NewGame() *Game {
 	return &Game{
-		playerX: 480,
-		playerY: 300,
+		playerX: 496,
+		playerY: 288,
 		enemies: []Enemy{
 			{x: 220, y: 180, name: "scavenger drone", active: true},
 			{x: 740, y: 170, name: "scrap hound", active: true},
@@ -50,18 +59,37 @@ func (g *Game) Update() error {
 	if inpututil.IsMouseButtonJustPressed(ebiten.MouseButtonRight) {
 		mouseX, mouseY := ebiten.CursorPosition()
 		g.targetX, g.targetY = float64(mouseX), float64(mouseY)
-		g.hasTarget = true
-		g.message = fmt.Sprintf("Moving to %.0f, %.0f", g.targetX, g.targetY)
+		if target, ok := worldToCell(g.targetX, g.targetY); ok {
+			if isBlocked(target) {
+				target = nearestWalkableCell(target)
+			}
+			g.path = findPath(worldToCellOrDefault(g.playerX, g.playerY), target)
+			g.pathIndex = 1
+			g.hasTarget = len(g.path) > 1
+			g.message = fmt.Sprintf("Path found: %d cells", len(g.path))
+		} else {
+			g.hasTarget = false
+			g.message = "Click inside the ruin floor to move."
+		}
 	}
 	if g.hasTarget {
-		dx, dy := g.targetX-g.playerX, g.targetY-g.playerY
-		distance := math.Hypot(dx, dy)
-		if distance < 3 {
+		if g.pathIndex >= len(g.path) {
 			g.hasTarget = false
 		} else {
-			step := 3.8
-			g.playerX += dx / distance * math.Min(step, distance)
-			g.playerY += dy / distance * math.Min(step, distance)
+			nextX, nextY := cellCenter(g.path[g.pathIndex])
+			dx, dy := nextX-g.playerX, nextY-g.playerY
+			distance := math.Hypot(dx, dy)
+			if distance < 3 {
+				g.playerX, g.playerY = nextX, nextY
+				g.pathIndex++
+				if g.pathIndex >= len(g.path) {
+					g.hasTarget = false
+				}
+			} else {
+				step := 3.8
+				g.playerX += dx / distance * math.Min(step, distance)
+				g.playerY += dy / distance * math.Min(step, distance)
+			}
 		}
 	}
 	if inpututil.IsKeyJustPressed(ebiten.KeyTab) {
@@ -90,8 +118,7 @@ func (g *Game) Draw(screen *ebiten.Image) {
 		}
 	}
 	// Broken walls and machine ruins.
-	ruins := [][4]float64{{90, 90, 180, 18}, {90, 90, 18, 115}, {680, 80, 190, 18}, {850, 80, 18, 130}, {330, 420, 260, 18}, {330, 350, 18, 88}}
-	for _, r := range ruins {
+	for _, r := range ruinWalls {
 		ebitenutil.DrawRect(screen, r[0], r[1], r[2], r[3], color.RGBA{52, 66, 82, 255})
 		ebitenutil.DrawRect(screen, r[0]+3, r[1]+3, r[2]-6, 3, color.RGBA{82, 105, 124, 255})
 	}
@@ -128,6 +155,103 @@ func (g *Game) Draw(screen *ebiten.Image) {
 		text.Draw(screen, "Tech currency and dungeon materials will fill this panel.", basicfont.Face7x13, 270, 220, color.RGBA{190, 200, 210, 255})
 		text.Draw(screen, "TAB to close", basicfont.Face7x13, 430, 330, color.RGBA{240, 216, 150, 255})
 	}
+}
+
+func worldToCell(x, y float64) (Cell, bool) {
+	cell := Cell{x: int((x - 32) / tileSize), y: int((y - 48) / tileSize)}
+	return cell, cell.x >= 0 && cell.x < gridWidth && cell.y >= 0 && cell.y < gridHeight
+}
+
+func worldToCellOrDefault(x, y float64) Cell {
+	cell, ok := worldToCell(x, y)
+	if !ok {
+		return Cell{x: gridWidth / 2, y: gridHeight / 2}
+	}
+	return cell
+}
+
+func cellCenter(cell Cell) (float64, float64) {
+	return float64(32 + cell.x*tileSize + tileSize/2), float64(48 + cell.y*tileSize + tileSize/2)
+}
+
+func isBlocked(cell Cell) bool {
+	if cell.x < 0 || cell.x >= gridWidth || cell.y < 0 || cell.y >= gridHeight {
+		return true
+	}
+	x, y := cellCenter(cell)
+	for _, wall := range ruinWalls {
+		if x >= wall[0]-2 && x <= wall[0]+wall[2]+2 && y >= wall[1]-2 && y <= wall[1]+wall[3]+2 {
+			return true
+		}
+	}
+	return false
+}
+
+func nearestWalkableCell(target Cell) Cell {
+	best := target
+	bestDistance := 9999
+	for y := 0; y < gridHeight; y++ {
+		for x := 0; x < gridWidth; x++ {
+			candidate := Cell{x: x, y: y}
+			if isBlocked(candidate) {
+				continue
+			}
+			distance := absInt(candidate.x-target.x) + absInt(candidate.y-target.y)
+			if distance < bestDistance {
+				best, bestDistance = candidate, distance
+			}
+		}
+	}
+	return best
+}
+
+func findPath(start, target Cell) []Cell {
+	if isBlocked(start) || isBlocked(target) {
+		return nil
+	}
+	visited := [gridHeight][gridWidth]bool{}
+	previous := [gridHeight][gridWidth]Cell{}
+	queue := []Cell{start}
+	visited[start.y][start.x] = true
+	previous[start.y][start.x] = start
+	directions := [...]Cell{{x: 1}, {x: -1}, {y: 1}, {y: -1}}
+	for len(queue) > 0 {
+		current := queue[0]
+		queue = queue[1:]
+		if current == target {
+			break
+		}
+		for _, direction := range directions {
+			next := Cell{x: current.x + direction.x, y: current.y + direction.y}
+			if isBlocked(next) || visited[next.y][next.x] {
+				continue
+			}
+			visited[next.y][next.x] = true
+			previous[next.y][next.x] = current
+			queue = append(queue, next)
+		}
+	}
+	if !visited[target.y][target.x] {
+		return nil
+	}
+	path := []Cell{}
+	for current := target; ; current = previous[current.y][current.x] {
+		path = append(path, current)
+		if current == start {
+			break
+		}
+	}
+	for left, right := 0, len(path)-1; left < right; left, right = left+1, right-1 {
+		path[left], path[right] = path[right], path[left]
+	}
+	return path
+}
+
+func absInt(value int) int {
+	if value < 0 {
+		return -value
+	}
+	return value
 }
 
 func (g *Game) Layout(_, _ int) (int, int) { return screenWidth, screenHeight }
