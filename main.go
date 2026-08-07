@@ -178,9 +178,14 @@ func isBlocked(cell Cell) bool {
 	if cell.x < 0 || cell.x >= gridWidth || cell.y < 0 || cell.y >= gridHeight {
 		return true
 	}
-	x, y := cellCenter(cell)
+	cellLeft := float64(32 + cell.x*tileSize)
+	cellTop := float64(48 + cell.y*tileSize)
+	cellRight := cellLeft + tileSize
+	cellBottom := cellTop + tileSize
 	for _, wall := range ruinWalls {
-		if x >= wall[0]-2 && x <= wall[0]+wall[2]+2 && y >= wall[1]-2 && y <= wall[1]+wall[3]+2 {
+		wallLeft, wallTop := wall[0]-2, wall[1]-2
+		wallRight, wallBottom := wall[0]+wall[2]+2, wall[1]+wall[3]+2
+		if cellLeft < wallRight && cellRight > wallLeft && cellTop < wallBottom && cellBottom > wallTop {
 			return true
 		}
 	}

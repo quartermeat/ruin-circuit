@@ -66,6 +66,7 @@ The first fidget slice is now scaffolded in Ebitengine:
 - Visible player combat chassis and movement marker
 - Grid collision against ruin walls
 - Breadth-first click-to-move pathfinding around obstacles
+- Collision uses wall/tile overlap so thin walls and corner geometry agree with the visible map
 - Q/W/E/R placeholder ability slots
 - Tab toggles a build workbench placeholder
 - WASM build script and browser entry point
