@@ -56,3 +56,26 @@ dungeon crawl → gather components and materials → return to hub
 - Six equipment slots
 - Component crafting for at least one ability
 - Click-to-move navigation
+
+## Current prototype status
+
+The first fidget slice is now scaffolded in Ebitengine:
+
+- Right-click click-to-move movement
+- Sci-fi ruin floor, broken walls, and three dormant machine targets
+- Visible player combat chassis and movement marker
+- Q/W/E/R placeholder ability slots
+- Tab toggles a build workbench placeholder
+- WASM build script and browser entry point
+
+The current prototype is intentionally a movement-and-presentation slice. Combat, navigation around obstacles, enemy behavior, component purchases, crafting, the tech tree, and the six-slot loadout remain planned work.
+
+## Versioning
+
+Versions follow the project release rule:
+
+- Patch (`v0.0.x`): every new build, including fixes and tuning.
+- Feature (`v0.x.0`): a meaningful new feature; reset the patch number to zero.
+- Shareable (`v1.0.0` or later): promoted when Jeremy feels the game is ready to share.
+
+Every push is tagged with the matching version number.
