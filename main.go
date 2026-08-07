@@ -15,7 +15,7 @@ import (
 const (
 	screenWidth  = 960
 	screenHeight = 540
-	version      = "v0.0.1"
+	version      = "v0.0.2"
 )
 
 type Enemy struct {

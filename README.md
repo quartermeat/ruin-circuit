@@ -79,3 +79,13 @@ Versions follow the project release rule:
 - Shareable (`v1.0.0` or later): promoted when Jeremy feels the game is ready to share.
 
 Every push is tagged with the matching version number.
+
+## Run the WASM prototype
+
+Build and serve the browser version with one command:
+
+```powershell
+.\scripts\start-local.ps1
+```
+
+Open `http://127.0.0.1:8080/`. Use `-Address "127.0.0.1:8090"` if the default port is occupied.
