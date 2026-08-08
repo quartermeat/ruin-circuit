@@ -122,3 +122,5 @@ The lane now has a single-lane MOBA baseline: allied and enemy waves spawn in ma
 New runs begin paused with the RESPEC/workbench screen open, requiring an auto-attack path before the lane can start. RESPEC pauses the lane whenever it is opened, and all hostile defenders now spawn in the lane rather than in off-lane positions.
 
 The enemy hero is targetable like a creep: right-click it after choosing an auto-attack, and the chassis will path into range and attack it using the selected melee or ranged behavior. When the player chooses a path, the enemy hero also randomly chooses from those same available paths; its current choice is shown beside it and resets with RESPEC.
+
+`Esc` now resets the entire run: towers, waves, heroes, enemies, build choices, and dungeon state all return to the initial paused workbench screen.

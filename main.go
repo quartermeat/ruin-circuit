@@ -19,7 +19,7 @@ const (
 	gridWidth    = 28
 	gridHeight   = 14
 	tileSize     = 32
-	version      = "v0.12.2"
+	version      = "v0.12.3"
 	maxHealth    = 10
 	maxTowerHP   = 20
 	towerRange   = 180.0
@@ -127,11 +127,11 @@ func NewGame() *Game {
 }
 
 func (g *Game) Update() error {
+	if inpututil.IsKeyJustPressed(ebiten.KeyEscape) {
+		*g = *NewGame()
+		return nil
+	}
 	if g.inDungeon {
-		if inpututil.IsKeyJustPressed(ebiten.KeyEscape) {
-			g.inDungeon = false
-			g.message = "Returned to the lane."
-		}
 		return nil
 	}
 	if inpututil.IsMouseButtonJustPressed(ebiten.MouseButtonLeft) {
