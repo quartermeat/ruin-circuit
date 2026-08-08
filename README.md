@@ -150,3 +150,5 @@ Hero respawn context now follows the surviving hero's current world layer. If on
 The portal only transitions the player when the portal is explicitly targeted with right-click. Passing through it during ordinary click-to-move pathing no longer enters the dungeon.
 
 Destroying either tower now triggers a persistent match end state: `YOU WON` when the enemy tower falls or `YOU LOST` when the blue tower falls. The match freezes with a result overlay, and `Esc` returns to the starting auto-attack selection/workbench for a new run.
+
+Click-to-move pathfinding now uses a 16-pixel navigation grid across the same world bounds. The cells are roughly half the size of a combat hero, giving movement and routing finer resolution.

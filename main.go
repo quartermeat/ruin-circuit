@@ -16,10 +16,10 @@ import (
 const (
 	screenWidth    = 960
 	screenHeight   = 540
-	gridWidth      = 28
-	gridHeight     = 14
-	tileSize       = 32
-	version        = "v0.17.0"
+	gridWidth      = 56
+	gridHeight     = 28
+	tileSize       = 16
+	version        = "v0.17.1"
 	maxHealth      = 10
 	maxTowerHP     = 20
 	towerRange     = 180.0
