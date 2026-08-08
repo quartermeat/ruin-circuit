@@ -111,9 +111,9 @@ Enemy attacks are animated as red energy strikes traveling from a threatened ene
 
 Threat now creates pursuit: threatened enemies move toward the chassis while respecting ruin-wall collision, then attack once they close to range. This makes target selection and proximity create an actual combat commitment.
 
-For playtesting, RESPEC also respawns the three starter enemies at their original positions with full health and cleared threat state, allowing repeated build experiments without refreshing the page.
+RESPEC only resets the build and opens the paused workbench; it does not reset the lane, towers, heroes, waves, or match timer.
 
-When the workbench is closed, `Tab` has the same behavior as clicking RESPEC: it resets the build, respawns the starter enemies, and opens the workbench. When the workbench is open, `Tab` closes it without resetting, so the menu always has an exit.
+When the workbench is closed, `Tab` has the same behavior as clicking RESPEC: it resets the build and opens the paused workbench. When the workbench is open, `Tab` closes it without resetting, so the menu always has an exit.
 
 The prototype setting is now a first MOBA-style lane instead of a dungeon. An allied tower and enemy tower frame the lane, allied combat drones automatically respawn at our tower and push toward the enemy tower, and the HUD tracks the active wave and enemy-tower health.
 
@@ -123,9 +123,9 @@ New runs begin paused with the RESPEC/workbench screen open, requiring an auto-a
 
 The enemy hero is targetable like a creep: right-click it after choosing an auto-attack, and the chassis will path into range and attack it using the selected melee or ranged behavior. When the player chooses a path, the enemy hero also randomly chooses from those same available paths; its current choice is shown beside it and resets with RESPEC. The lane now contains only the mirrored creep waves and the enemy hero; the legacy named defender units have been removed.
 
-The enemy hero now respawns automatically after defeat. The timer starts at five seconds and increases by one second per thirty seconds of match time, up to thirty seconds, with the remaining time shown in the HUD. RESPEC/Esc still resets the whole match timer.
+The enemy hero now respawns automatically after defeat. The timer starts at five seconds and increases by one second per thirty seconds of match time, up to thirty seconds, with the remaining time shown in the HUD. Esc resets the whole match timer.
 
-The player now uses that exact same respawn rule: defeat starts the same match-time-scaled timer, the chassis disappears during the timer, and it returns at the blue-side start position with full health. Both timers reset through RESPEC/Esc.
+The player now uses that exact same respawn rule: defeat starts the same match-time-scaled timer, the chassis disappears during the timer, and it returns at the blue-side start position with full health. Esc resets both timers.
 
 Creeps now prioritize heroes inside a 100-pixel combat radius over opposing creeps. Enemy creep targeting also matches hero targeting: right-click a red creep to follow it, stop at attack range, and keep attacking until another movement command cancels the order.
 
@@ -135,7 +135,7 @@ All active creeps and heroes now display floating health bars above their heads,
 
 The enemy hero now responds to threat: once a player attack hits it, the hero abandons tower pressure, pursues the player, and attacks at its own selected melee or ranged distance until that life ends. Respawning clears that threat state.
 
-Hero spawn points are alliance-based: the blue player starts and respawns near the blue tower, while the red AI hero starts and respawns near the red tower. RESPEC/Esc uses those same alliance spawn points.
+Hero spawn points are alliance-based: the blue player starts and respawns near the blue tower, while the red AI hero starts and respawns near the red tower. Esc uses those same alliance spawn points.
 
 `Esc` now resets the entire run: towers, waves, heroes, enemies, build choices, and dungeon state all return to the initial paused workbench screen.
 

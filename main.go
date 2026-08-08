@@ -19,7 +19,7 @@ const (
 	gridWidth      = 28
 	gridHeight     = 14
 	tileSize       = 32
-	version        = "v0.14.4"
+	version        = "v0.14.5"
 	maxHealth      = 10
 	maxTowerHP     = 20
 	towerRange     = 180.0
@@ -431,9 +431,8 @@ func (g *Game) respec() {
 	g.attackTargetIsCreep = false
 	g.attackTarget = -1
 	g.hasTarget = false
-	g.resetEnemies()
 	g.showBuild = true
-	g.message = "Build reset. Enemies respawned. Choose the path before entering the lane."
+	g.message = "Build reset. Choose the path before entering the lane."
 }
 
 func (g *Game) chooseAIHeroPath() {
