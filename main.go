@@ -19,7 +19,7 @@ const (
 	gridWidth    = 28
 	gridHeight   = 14
 	tileSize     = 32
-	version      = "v0.12.3"
+	version      = "v0.12.4"
 	maxHealth    = 10
 	maxTowerHP   = 20
 	towerRange   = 180.0
@@ -219,6 +219,7 @@ func (g *Game) Update() error {
 			g.message = "Click inside the ruin floor to move."
 		}
 	}
+	g.refreshAttackPath()
 	if g.hasTarget {
 		if g.pathIndex >= len(g.path) {
 			g.hasTarget = false
@@ -641,10 +642,7 @@ func (g *Game) updateAutoAttack() {
 			g.hasTarget = false
 			return
 		}
-		attackRange := 58.0
-		if g.autoAttackRanged {
-			attackRange = 190
-		}
+		attackRange := g.selectedAttackRange()
 		distance := math.Hypot(g.aiHero.x-g.playerX, g.aiHero.y-g.playerY)
 		if distance <= attackRange {
 			g.hasTarget = false
@@ -674,10 +672,7 @@ func (g *Game) updateAutoAttack() {
 	}
 	enemy := &g.enemies[g.attackTarget]
 	enemy.threat = true
-	attackRange := 58.0
-	if g.autoAttackRanged {
-		attackRange = 190
-	}
+	attackRange := g.selectedAttackRange()
 	if math.Hypot(enemy.x-g.playerX, enemy.y-g.playerY) <= attackRange {
 		g.hasTarget = false
 	}
@@ -698,6 +693,37 @@ func (g *Game) updateAutoAttack() {
 		return
 	}
 	g.message = fmt.Sprintf("Auto-attack hit %s (%d health)", enemy.name, enemy.health)
+}
+
+func (g *Game) selectedAttackRange() float64 {
+	if g.autoAttackRanged {
+		return 190
+	}
+	return 58
+}
+
+func (g *Game) refreshAttackPath() {
+	var targetX, targetY float64
+	var active bool
+	if g.attackHero && g.aiHero.active {
+		targetX, targetY = g.aiHero.x, g.aiHero.y
+		active = true
+	} else if g.attackTarget >= 0 && g.attackTarget < len(g.enemies) && g.enemies[g.attackTarget].active {
+		targetX, targetY = g.enemies[g.attackTarget].x, g.enemies[g.attackTarget].y
+		active = true
+	}
+	if !active {
+		return
+	}
+	g.targetX, g.targetY = targetX, targetY
+	if math.Hypot(targetX-g.playerX, targetY-g.playerY) <= g.selectedAttackRange() {
+		g.hasTarget = false
+		return
+	}
+	target := worldToCellOrDefault(targetX, targetY)
+	g.path = findPath(worldToCellOrDefault(g.playerX, g.playerY), target)
+	g.pathIndex = 1
+	g.hasTarget = len(g.path) > 1
 }
 
 func (g *Game) drawAttackAnimation(screen *ebiten.Image) {
