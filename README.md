@@ -154,3 +154,5 @@ Destroying either tower now triggers a persistent match end state: `YOU WON` whe
 Click-to-move pathfinding now uses a 16-pixel navigation grid across the same world bounds. The cells are roughly half the size of a combat hero, giving movement and routing finer resolution.
 
 Heroes recover one health every 30 frames while within 120 pixels of their living allied tower. This applies to the player at the blue tower and the AI hero at the red tower, and pauses while either hero is inside a dungeon.
+
+Respawn timers now use both match duration and individual hero deaths: the match-time delay still grows over time, and each hero adds one extra second per death, capped at ten extra seconds. Each hero's death count resets only when the run is restarted with `Esc`.

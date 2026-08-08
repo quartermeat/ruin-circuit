@@ -19,7 +19,7 @@ const (
 	gridWidth      = 56
 	gridHeight     = 28
 	tileSize       = 16
-	version        = "v0.17.2"
+	version        = "v0.17.3"
 	maxHealth      = 10
 	maxTowerHP     = 20
 	towerRange     = 180.0
@@ -64,6 +64,7 @@ type AIHero struct {
 	health           int
 	attackCD         int
 	active           bool
+	deaths           int
 	threat           bool
 	autoAttackPicked bool
 	autoAttackRanged bool
@@ -125,6 +126,7 @@ type Game struct {
 	playerHealth        int
 	playerActive        bool
 	playerRespawnTimer  int
+	playerDeaths        int
 	message             string
 }
 
@@ -601,7 +603,8 @@ func (g *Game) updateDungeon() {
 	if g.playerHealth <= 0 {
 		g.playerActive = false
 		g.inDungeon = false
-		g.playerRespawnTimer = g.enemyHeroRespawnDelay()
+		g.playerDeaths++
+		g.playerRespawnTimer = g.enemyHeroRespawnDelay(g.playerDeaths)
 		g.message = "Chassis destroyed in the dungeon. Respawn timer started."
 		return
 	}
@@ -662,6 +665,7 @@ func (g *Game) resetEnemies() {
 	g.playerHealth = maxHealth
 	g.playerActive = true
 	g.playerRespawnTimer = 0
+	g.playerDeaths = 0
 }
 
 func (g *Game) portalAt(x, y float64) (int, bool) {
@@ -750,7 +754,8 @@ func (g *Game) updateAIHeroDungeon() {
 	if g.aiHero.health <= 0 {
 		g.aiHero.active = false
 		g.aiHero.inDungeon = false
-		g.aiHeroRespawnTimer = g.enemyHeroRespawnDelay()
+		g.aiHero.deaths++
+		g.aiHeroRespawnTimer = g.enemyHeroRespawnDelay(g.aiHero.deaths)
 		g.message = "Enemy hero was defeated in the dungeon."
 		return
 	}
@@ -815,7 +820,8 @@ func (g *Game) damageAIHeroFromCreep() {
 		return
 	}
 	g.aiHero.active = false
-	g.aiHeroRespawnTimer = g.enemyHeroRespawnDelay()
+	g.aiHero.deaths++
+	g.aiHeroRespawnTimer = g.enemyHeroRespawnDelay(g.aiHero.deaths)
 	g.attackHero = false
 	g.hasTarget = false
 	g.message = "Enemy hero defeated by allied creeps."
@@ -827,7 +833,8 @@ func (g *Game) damagePlayerFromCreep() {
 		return
 	}
 	g.playerActive = false
-	g.playerRespawnTimer = g.enemyHeroRespawnDelay()
+	g.playerDeaths++
+	g.playerRespawnTimer = g.enemyHeroRespawnDelay(g.playerDeaths)
 	g.attackHero = false
 	g.attackTower = false
 	g.attackTarget = -1
@@ -843,7 +850,8 @@ func (g *Game) damagePlayerFromEnemyHero() {
 		return
 	}
 	g.playerActive = false
-	g.playerRespawnTimer = g.enemyHeroRespawnDelay()
+	g.playerDeaths++
+	g.playerRespawnTimer = g.enemyHeroRespawnDelay(g.playerDeaths)
 	g.attackHero = false
 	g.attackTarget = -1
 	g.attackTargetIsCreep = false
@@ -1158,7 +1166,8 @@ func (g *Game) updateAutoAttack() {
 		g.attackVisualRanged = g.autoAttackRanged
 		if g.aiHero.health <= 0 {
 			g.aiHero.active = false
-			g.aiHeroRespawnTimer = g.enemyHeroRespawnDelay()
+			g.aiHero.deaths++
+			g.aiHeroRespawnTimer = g.enemyHeroRespawnDelay(g.aiHero.deaths)
 			g.attackHero = false
 			g.hasTarget = false
 			g.message = "Enemy hero defeated."
@@ -1228,13 +1237,17 @@ func (g *Game) updateAutoAttack() {
 	g.message = fmt.Sprintf("Auto-attack hit %s (%d health)", enemy.name, enemy.health)
 }
 
-func (g *Game) enemyHeroRespawnDelay() int {
+func (g *Game) enemyHeroRespawnDelay(deaths int) int {
 	matchSeconds := g.matchFrames / 60
 	additionalSeconds := matchSeconds / 30
 	if additionalSeconds > 25 {
 		additionalSeconds = 25
 	}
-	return (5 + additionalSeconds) * 60
+	deathSeconds := deaths
+	if deathSeconds > 10 {
+		deathSeconds = 10
+	}
+	return (5 + additionalSeconds + deathSeconds) * 60
 }
 
 func (g *Game) selectedAttackRange() float64 {
@@ -1329,7 +1342,8 @@ func (g *Game) updateEnemyAttacks() {
 		g.message = fmt.Sprintf("%s hit the chassis (%d/%d HP)", enemy.name, g.playerHealth, maxHealth)
 		if g.playerHealth <= 0 {
 			g.playerActive = false
-			g.playerRespawnTimer = g.enemyHeroRespawnDelay()
+			g.playerDeaths++
+			g.playerRespawnTimer = g.enemyHeroRespawnDelay(g.playerDeaths)
 			g.hasTarget = false
 			g.attackHero = false
 			g.attackTarget = -1
