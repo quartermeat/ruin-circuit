@@ -3,3 +3,4 @@ web/wasm_exec.js
 *.db
 *.db-*
 *.exe
+artifacts/

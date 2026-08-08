@@ -5,6 +5,7 @@ import (
 	"image/color"
 	"math"
 	"math/rand"
+	"os"
 
 	"github.com/hajimehoshi/ebiten/v2"
 	"github.com/hajimehoshi/ebiten/v2/ebitenutil"
@@ -19,7 +20,7 @@ const (
 	gridWidth      = 56
 	gridHeight     = 28
 	tileSize       = 16
-	version        = "v1.17.5"
+	version        = "v1.18.0"
 	maxHealth      = 10
 	maxTowerHP     = 20
 	towerRange     = 180.0
@@ -1370,6 +1371,12 @@ func pointInRect(x, y, left, top, width, height int) bool {
 func (g *Game) Layout(_, _ int) (int, int) { return screenWidth, screenHeight }
 
 func main() {
+	if len(os.Args) > 1 && os.Args[1] == "-balance-harness" {
+		if err := runBalanceHarness(); err != nil {
+			panic(err)
+		}
+		return
+	}
 	ebiten.SetWindowSize(screenWidth, screenHeight)
 	ebiten.SetWindowTitle("Ruin Circuit")
 	if err := ebiten.RunGame(NewGame()); err != nil {

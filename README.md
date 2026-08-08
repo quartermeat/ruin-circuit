@@ -162,3 +162,13 @@ Heroes recover one health every 30 frames while within 120 pixels of their livin
 Respawn timers now use both match duration and individual hero deaths: the match-time delay still grows over time, and each hero adds one extra second per death, capped at ten extra seconds. Each hero's death count resets only when the run is restarted with `Esc`.
 
 The codebase now isolates navigation in `pathfinding.go` and shared combat timing rules in `combat_rules.go`. These boundaries are covered by focused Go tests so movement-grid and respawn changes can evolve without relying only on browser playtesting.
+
+## AI balance harness
+
+Run the existing combat rules with an AI-controlled player and export telemetry plus a vertical replay:
+
+```powershell
+.\scripts\run-balance-harness.ps1
+```
+
+The harness writes a JSONL event log, a summary, and a 720×1280 H.264 MP4 at `artifacts\balance-run\balance-run-tiktok.mp4`. Set `$env:BALANCE_SECONDS` before running to change the simulated match length. The AI uses a ranged push policy and retreats toward the blue tower at 3 HP, making tower health, deaths, and stalemate pressure visible for balance review.
