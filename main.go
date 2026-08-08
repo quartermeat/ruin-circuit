@@ -19,7 +19,7 @@ const (
 	gridWidth      = 28
 	gridHeight     = 14
 	tileSize       = 32
-	version        = "v0.14.2"
+	version        = "v0.14.3"
 	maxHealth      = 10
 	maxTowerHP     = 20
 	towerRange     = 180.0
@@ -59,6 +59,7 @@ type AIHero struct {
 	health           int
 	attackCD         int
 	active           bool
+	threat           bool
 	autoAttackPicked bool
 	autoAttackRanged bool
 }
@@ -318,6 +319,9 @@ func (g *Game) Draw(screen *ebiten.Image) {
 		}
 		text.Draw(screen, aiHeroLabel, basicfont.Face7x13, int(g.aiHero.x)-48, int(g.aiHero.y)-22, color.RGBA{245, 140, 145, 255})
 		drawHealthBar(screen, g.aiHero.x, g.aiHero.y-28, g.aiHero.health, maxHealth, color.RGBA{235, 95, 105, 255})
+		if g.aiHero.threat {
+			ebitenutil.DrawRect(screen, g.aiHero.x-3, g.aiHero.y-34, 6, 2, color.RGBA{255, 115, 90, 255})
+		}
 	}
 	for _, minion := range g.minions {
 		if !minion.active {
@@ -477,12 +481,33 @@ func (g *Game) updateAIHero() {
 		}
 		g.aiHero.x, g.aiHero.y = 720, 288
 		g.aiHero.health = 10
+		g.aiHero.threat = false
 		g.aiHero.active = true
 		g.message = "Enemy hero respawned."
 		return
 	}
 	if g.aiHero.attackCD > 0 {
 		g.aiHero.attackCD--
+	}
+	if g.aiHero.threat && g.playerActive {
+		attackRange := 58.0
+		if g.aiHero.autoAttackRanged {
+			attackRange = 190
+		}
+		distance := math.Hypot(g.playerX-g.aiHero.x, g.playerY-g.aiHero.y)
+		if distance > attackRange {
+			step := math.Min(0.85, distance-attackRange)
+			if distance > 0 {
+				g.aiHero.x += (g.playerX - g.aiHero.x) / distance * step
+				g.aiHero.y += (g.playerY - g.aiHero.y) / distance * step
+			}
+			return
+		}
+		if g.aiHero.attackCD == 0 {
+			g.aiHero.attackCD = 30
+			g.damagePlayerFromEnemyHero()
+		}
+		return
 	}
 	creepIndex, creepDistance := g.closestActiveAllyMinionToHero()
 	if creepIndex >= 0 && creepDistance <= creepHeroRange {
@@ -540,6 +565,21 @@ func (g *Game) damagePlayerFromCreep() {
 	g.attackTargetIsCreep = false
 	g.hasTarget = false
 	g.message = "Chassis destroyed by enemy creeps. Respawn timer started."
+}
+
+func (g *Game) damagePlayerFromEnemyHero() {
+	g.playerHealth--
+	if g.playerHealth > 0 {
+		g.message = fmt.Sprintf("Enemy hero hit the chassis (%d/%d HP)", g.playerHealth, maxHealth)
+		return
+	}
+	g.playerActive = false
+	g.playerRespawnTimer = g.enemyHeroRespawnDelay()
+	g.attackHero = false
+	g.attackTarget = -1
+	g.attackTargetIsCreep = false
+	g.hasTarget = false
+	g.message = "Chassis destroyed by enemy hero. Respawn timer started."
 }
 
 func (g *Game) updateMinionWave() {
@@ -799,6 +839,7 @@ func (g *Game) updateAutoAttack() {
 			return
 		}
 		g.aiHero.health--
+		g.aiHero.threat = true
 		g.attackCooldown = 30
 		g.attackAnimation = 10
 		g.attackStartX, g.attackStartY = g.playerX, g.playerY
