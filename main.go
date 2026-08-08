@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"image/color"
 	"math"
+	"math/rand"
 
 	"github.com/hajimehoshi/ebiten/v2"
 	"github.com/hajimehoshi/ebiten/v2/ebitenutil"
@@ -18,7 +19,7 @@ const (
 	gridWidth    = 28
 	gridHeight   = 14
 	tileSize     = 32
-	version      = "v0.12.1"
+	version      = "v0.12.2"
 	maxHealth    = 10
 	maxTowerHP   = 20
 	towerRange   = 180.0
@@ -53,9 +54,12 @@ type Portal struct {
 }
 
 type AIHero struct {
-	x, y     float64
-	health   int
-	attackCD int
+	x, y             float64
+	health           int
+	attackCD         int
+	active           bool
+	autoAttackPicked bool
+	autoAttackRanged bool
 }
 
 type Game struct {
@@ -79,6 +83,7 @@ type Game struct {
 	autoAttackPicked    bool
 	autoAttackRanged    bool
 	attackTarget        int
+	attackHero          bool
 	attackCooldown      int
 	attackAnimation     int
 	attackStartX        float64
@@ -112,7 +117,7 @@ func NewGame() *Game {
 		minionSpawnTimer:  240,
 		playerTowerHealth: maxTowerHP,
 		enemyTowerHealth:  maxTowerHP,
-		aiHero:            AIHero{x: 720, y: 288, health: 10},
+		aiHero:            AIHero{x: 720, y: 288, health: 10, active: true},
 		portals:           []Portal{{x: 470, y: 400, name: "SUNKEN ARCHIVE"}},
 		attackTarget:      -1,
 		playerHealth:      maxHealth,
@@ -136,10 +141,12 @@ func (g *Game) Update() error {
 		} else if g.showBuild && pointInRect(mouseX, mouseY, 270, 245, 220, 34) {
 			g.autoAttackPicked = true
 			g.autoAttackRanged = false
+			g.chooseAIHeroPath()
 			g.message = "Path chosen: close-range auto-attack online. Experiment freely."
 		} else if g.showBuild && pointInRect(mouseX, mouseY, 270, 285, 220, 34) {
 			g.autoAttackPicked = true
 			g.autoAttackRanged = true
+			g.chooseAIHeroPath()
 			g.message = "Path chosen: ranged auto-attack online. Keep your distance."
 		}
 	}
@@ -163,11 +170,27 @@ func (g *Game) Update() error {
 			g.message = fmt.Sprintf("Entering pop-up dungeon: %s", g.portals[portalIndex].name)
 			return nil
 		}
+		if g.aiHeroAt(float64(mouseX), float64(mouseY)) {
+			if !g.autoAttackPicked {
+				g.message = "Choose the path before engaging enemies."
+				return nil
+			}
+			g.attackHero = true
+			g.attackTarget = -1
+			g.targetX, g.targetY = g.aiHero.x, g.aiHero.y
+			target := worldToCellOrDefault(g.targetX, g.targetY)
+			g.path = findPath(worldToCellOrDefault(g.playerX, g.playerY), target)
+			g.pathIndex = 1
+			g.hasTarget = len(g.path) > 1
+			g.message = "Targeting enemy hero — auto-attack engaged"
+			return nil
+		}
 		if enemyIndex, ok := g.enemyAt(float64(mouseX), float64(mouseY)); ok {
 			if !g.autoAttackPicked {
 				g.message = "Choose the path before engaging enemies."
 				return nil
 			}
+			g.attackHero = false
 			g.attackTarget = enemyIndex
 			g.targetX, g.targetY = g.enemies[enemyIndex].x, g.enemies[enemyIndex].y
 			target := worldToCellOrDefault(g.targetX, g.targetY)
@@ -180,6 +203,7 @@ func (g *Game) Update() error {
 			g.message = fmt.Sprintf("Targeting %s — auto-attack engaged", g.enemies[enemyIndex].name)
 			return nil
 		}
+		g.attackHero = false
 		g.attackTarget = -1
 		g.targetX, g.targetY = float64(mouseX), float64(mouseY)
 		if target, ok := worldToCell(g.targetX, g.targetY); ok {
@@ -258,9 +282,15 @@ func (g *Game) Draw(screen *ebiten.Image) {
 		ebitenutil.DrawRect(screen, portal.x-8, portal.y-8, 16, 16, color.RGBA{210, 130, 245, 230})
 		text.Draw(screen, "PORTAL", basicfont.Face7x13, int(portal.x)-21, int(portal.y)+28, color.RGBA{210, 160, 245, 255})
 	}
-	ebitenutil.DrawRect(screen, g.aiHero.x-10, g.aiHero.y-10, 20, 20, color.RGBA{190, 70, 80, 255})
-	ebitenutil.DrawRect(screen, g.aiHero.x-5, g.aiHero.y-16, 10, 5, color.RGBA{250, 170, 140, 255})
-	text.Draw(screen, "ENEMY HERO", basicfont.Face7x13, int(g.aiHero.x)-30, int(g.aiHero.y)-22, color.RGBA{245, 140, 145, 255})
+	if g.aiHero.active {
+		ebitenutil.DrawRect(screen, g.aiHero.x-10, g.aiHero.y-10, 20, 20, color.RGBA{190, 70, 80, 255})
+		ebitenutil.DrawRect(screen, g.aiHero.x-5, g.aiHero.y-16, 10, 5, color.RGBA{250, 170, 140, 255})
+		aiHeroLabel := "ENEMY HERO // CLOSE"
+		if g.aiHero.autoAttackRanged {
+			aiHeroLabel = "ENEMY HERO // RANGED"
+		}
+		text.Draw(screen, aiHeroLabel, basicfont.Face7x13, int(g.aiHero.x)-48, int(g.aiHero.y)-22, color.RGBA{245, 140, 145, 255})
+	}
 	for _, minion := range g.minions {
 		if !minion.active {
 			continue
@@ -351,11 +381,17 @@ func (g *Game) Draw(screen *ebiten.Image) {
 func (g *Game) respec() {
 	g.autoAttackPicked = false
 	g.autoAttackRanged = false
+	g.attackHero = false
 	g.attackTarget = -1
 	g.hasTarget = false
 	g.resetEnemies()
 	g.showBuild = true
 	g.message = "Build reset. Enemies respawned. Choose the path before entering the lane."
+}
+
+func (g *Game) chooseAIHeroPath() {
+	g.aiHero.autoAttackPicked = true
+	g.aiHero.autoAttackRanged = rand.Intn(2) == 1
 }
 
 func (g *Game) resetEnemies() {
@@ -384,7 +420,7 @@ func (g *Game) resetEnemies() {
 	g.minionSpawnTimer = 240
 	g.playerTowerAttackCD = 0
 	g.enemyTowerAttackCD = 0
-	g.aiHero = AIHero{x: 720, y: 288, health: 10}
+	g.aiHero = AIHero{x: 720, y: 288, health: 10, active: true}
 }
 
 func (g *Game) portalAt(x, y float64) (int, bool) {
@@ -397,6 +433,9 @@ func (g *Game) portalAt(x, y float64) (int, bool) {
 }
 
 func (g *Game) updateAIHero() {
+	if !g.aiHero.active {
+		return
+	}
 	if g.aiHero.attackCD > 0 {
 		g.aiHero.attackCD--
 	}
@@ -591,7 +630,44 @@ func (g *Game) enemyAt(x, y float64) (int, bool) {
 	return -1, false
 }
 
+func (g *Game) aiHeroAt(x, y float64) bool {
+	return g.aiHero.active && math.Hypot(g.aiHero.x-x, g.aiHero.y-y) <= 28
+}
+
 func (g *Game) updateAutoAttack() {
+	if g.attackHero {
+		if !g.aiHero.active {
+			g.attackHero = false
+			g.hasTarget = false
+			return
+		}
+		attackRange := 58.0
+		if g.autoAttackRanged {
+			attackRange = 190
+		}
+		distance := math.Hypot(g.aiHero.x-g.playerX, g.aiHero.y-g.playerY)
+		if distance <= attackRange {
+			g.hasTarget = false
+		}
+		if distance > attackRange || g.attackCooldown > 0 {
+			return
+		}
+		g.aiHero.health--
+		g.attackCooldown = 30
+		g.attackAnimation = 10
+		g.attackStartX, g.attackStartY = g.playerX, g.playerY
+		g.attackEndX, g.attackEndY = g.aiHero.x, g.aiHero.y
+		g.attackVisualRanged = g.autoAttackRanged
+		if g.aiHero.health <= 0 {
+			g.aiHero.active = false
+			g.attackHero = false
+			g.hasTarget = false
+			g.message = "Enemy hero defeated."
+			return
+		}
+		g.message = fmt.Sprintf("Auto-attack hit enemy hero (%d health)", g.aiHero.health)
+		return
+	}
 	if g.attackTarget < 0 || g.attackTarget >= len(g.enemies) || !g.enemies[g.attackTarget].active {
 		g.attackTarget = -1
 		return
