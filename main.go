@@ -18,7 +18,7 @@ const (
 	gridWidth    = 28
 	gridHeight   = 14
 	tileSize     = 32
-	version      = "v0.6.0"
+	version      = "v0.7.0"
 	maxHealth    = 10
 )
 
@@ -27,12 +27,15 @@ var ruinWalls = [][4]float64{{90, 90, 180, 18}, {90, 90, 18, 115}, {680, 80, 190
 type Cell struct{ x, y int }
 
 type Enemy struct {
-	x, y     float64
-	name     string
-	health   int
-	threat   bool
-	attackCD int
-	active   bool
+	x, y       float64
+	name       string
+	health     int
+	threat     bool
+	attackCD   int
+	attackAnim int
+	targetX    float64
+	targetY    float64
+	active     bool
 }
 
 type Game struct {
@@ -191,6 +194,7 @@ func (g *Game) Draw(screen *ebiten.Image) {
 		ebitenutil.DrawRect(screen, enemy.x-14, enemy.y-22, 28, 3, color.RGBA{34, 20, 25, 255})
 		ebitenutil.DrawRect(screen, enemy.x-14, enemy.y-22, float64(enemy.health)*9.3, 3, color.RGBA{220, 80, 85, 255})
 	}
+	g.drawEnemyAttackAnimations(screen)
 	if g.hasTarget {
 		ebitenutil.DrawRect(screen, g.targetX-5, g.targetY-1, 10, 2, color.RGBA{110, 219, 222, 220})
 		ebitenutil.DrawRect(screen, g.targetX-1, g.targetY-5, 2, 10, color.RGBA{110, 219, 222, 220})
@@ -322,6 +326,9 @@ func (g *Game) drawAttackAnimation(screen *ebiten.Image) {
 func (g *Game) updateEnemyAttacks() {
 	for index := range g.enemies {
 		enemy := &g.enemies[index]
+		if enemy.attackAnim > 0 {
+			enemy.attackAnim--
+		}
 		if !enemy.active {
 			continue
 		}
@@ -336,6 +343,8 @@ func (g *Game) updateEnemyAttacks() {
 			continue
 		}
 		enemy.attackCD = 45
+		enemy.attackAnim = 9
+		enemy.targetX, enemy.targetY = g.playerX, g.playerY
 		g.playerHealth--
 		g.message = fmt.Sprintf("%s hit the chassis (%d/%d HP)", enemy.name, g.playerHealth, maxHealth)
 		if g.playerHealth <= 0 {
@@ -345,6 +354,19 @@ func (g *Game) updateEnemyAttacks() {
 			g.attackTarget = -1
 			g.message = "Chassis disabled. Emergency reboot complete."
 		}
+	}
+}
+
+func (g *Game) drawEnemyAttackAnimations(screen *ebiten.Image) {
+	for _, enemy := range g.enemies {
+		if enemy.attackAnim <= 0 {
+			continue
+		}
+		progress := 1 - float64(enemy.attackAnim)/9
+		x := enemy.x + (enemy.targetX-enemy.x)*progress
+		y := enemy.y + (enemy.targetY-enemy.y)*progress
+		ebitenutil.DrawLine(screen, enemy.x, enemy.y, x, y, color.RGBA{240, 80, 95, 150})
+		ebitenutil.DrawRect(screen, x-5, y-2, 10, 4, color.RGBA{255, 130, 110, 255})
 	}
 }
 

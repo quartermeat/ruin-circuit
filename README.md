@@ -106,3 +106,5 @@ The workbench now offers two auto-attack paths: close-range and ranged. The rang
 The build model uses attributes as damage multipliers. The selected auto-attack establishes a baseline damage identity, while each Q/W/E/R skill choice will carry its own scaling attribute; choices can reinforce one attribute or create a hybrid build. Once an enemy is within the selected auto-attack's effective range, movement stops and the chassis continues attacking from that position.
 
 Auto-attacks now have readable combat animation: ranged attacks launch a traveling energy bolt, while close-range attacks show a directional melee slash.
+
+Enemy attacks are animated as red energy strikes traveling from a threatened enemy to the chassis, making incoming damage readable alongside the HP change.
