@@ -6,4 +6,4 @@ Keep implementation decisions consistent with the README. Update the README when
 
 Every commit must update `README.md` as a merged source of truth: preserve what is already documented, incorporate decisions made in the conversation, and keep the remaining planned work clearly represented.
 
-Use the project versioning rules: every build increments the patch number (`v0.0.x`), a meaningful feature increments the minor number (`v0.x.0`), and `v1.0.0` or later is reserved for a release Jeremy considers shareable. Every push must be tagged with the matching version.
+Use the project versioning rules: an architectural refactor increments the first number (`vX.0.0`), a meaningful feature increments the second number (`vX.x.0`), and every build, fix, or tuning pass increments the third number (`vX.x.x`). The first number is not reserved for release readiness. Every push must be tagged with the matching version.

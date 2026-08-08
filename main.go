@@ -19,7 +19,7 @@ const (
 	gridWidth      = 56
 	gridHeight     = 28
 	tileSize       = 16
-	version        = "v0.17.4"
+	version        = "v1.17.4"
 	maxHealth      = 10
 	maxTowerHP     = 20
 	towerRange     = 180.0

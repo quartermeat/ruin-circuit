@@ -75,11 +75,11 @@ The current prototype is intentionally a movement-and-presentation slice. Combat
 
 ## Versioning
 
-Versions follow the project release rule:
+Versions follow the project change rule:
 
-- Patch (`v0.0.x`): every new build, including fixes and tuning.
-- Feature (`v0.x.0`): a meaningful new feature; reset the patch number to zero.
-- Shareable (`v1.0.0` or later): promoted when Jeremy feels the game is ready to share.
+- Refactor (`vX.0.0`): an architectural refactor; increment the first number while preserving the current feature and build counters.
+- Feature (`vX.x.0`): a meaningful gameplay feature; increment the second number and reset the build counter to zero.
+- Build (`vX.x.x`): every new build, including fixes and tuning; increment the third number.
 
 Every push is tagged with the matching version number.
 
