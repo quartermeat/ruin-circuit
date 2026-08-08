@@ -127,6 +127,8 @@ The enemy hero now respawns automatically after defeat. The timer starts at five
 
 The player now uses that exact same respawn rule: defeat starts the same match-time-scaled timer, the chassis disappears during the timer, and it returns at the blue-side start position with full health. Both timers reset through RESPEC/Esc.
 
+Creeps now prioritize heroes inside a 100-pixel combat radius over opposing creeps. Enemy creep targeting also matches hero targeting: right-click a red creep to follow it, stop at attack range, and keep attacking until another movement command cancels the order.
+
 `Esc` now resets the entire run: towers, waves, heroes, enemies, build choices, and dungeon state all return to the initial paused workbench screen.
 
 Right-clicking an enemy now creates a persistent attack order: the chassis follows the moving target, stops at the selected attack range, and continues auto-attacking. Right-clicking open ground cancels the attack order and returns to movement.

@@ -14,15 +14,16 @@ import (
 )
 
 const (
-	screenWidth  = 960
-	screenHeight = 540
-	gridWidth    = 28
-	gridHeight   = 14
-	tileSize     = 32
-	version      = "v0.13.2"
-	maxHealth    = 10
-	maxTowerHP   = 20
-	towerRange   = 180.0
+	screenWidth    = 960
+	screenHeight   = 540
+	gridWidth      = 28
+	gridHeight     = 14
+	tileSize       = 32
+	version        = "v0.14.0"
+	maxHealth      = 10
+	maxTowerHP     = 20
+	towerRange     = 180.0
+	creepHeroRange = 100.0
 )
 
 var ruinWalls = [][4]float64{}
@@ -85,6 +86,7 @@ type Game struct {
 	autoAttackPicked    bool
 	autoAttackRanged    bool
 	attackTarget        int
+	attackTargetIsCreep bool
 	attackHero          bool
 	attackCooldown      int
 	attackAnimation     int
@@ -194,12 +196,25 @@ func (g *Game) Update() error {
 			g.message = "Targeting enemy hero — auto-attack engaged"
 			return nil
 		}
+		if creepIndex, ok := g.enemyMinionAt(float64(mouseX), float64(mouseY)); ok {
+			if !g.autoAttackPicked {
+				g.message = "Choose the path before engaging enemies."
+				return nil
+			}
+			g.attackHero = false
+			g.attackTargetIsCreep = true
+			g.attackTarget = creepIndex
+			g.targetX, g.targetY = g.enemyMinions[creepIndex].x, g.enemyMinions[creepIndex].y
+			g.message = "Targeting enemy creep — auto-attack engaged"
+			return nil
+		}
 		if enemyIndex, ok := g.enemyAt(float64(mouseX), float64(mouseY)); ok {
 			if !g.autoAttackPicked {
 				g.message = "Choose the path before engaging enemies."
 				return nil
 			}
 			g.attackHero = false
+			g.attackTargetIsCreep = false
 			g.attackTarget = enemyIndex
 			g.targetX, g.targetY = g.enemies[enemyIndex].x, g.enemies[enemyIndex].y
 			target := worldToCellOrDefault(g.targetX, g.targetY)
@@ -213,6 +228,7 @@ func (g *Game) Update() error {
 			return nil
 		}
 		g.attackHero = false
+		g.attackTargetIsCreep = false
 		g.attackTarget = -1
 		g.targetX, g.targetY = float64(mouseX), float64(mouseY)
 		if target, ok := worldToCell(g.targetX, g.targetY); ok {
@@ -401,6 +417,7 @@ func (g *Game) respec() {
 	g.autoAttackPicked = false
 	g.autoAttackRanged = false
 	g.attackHero = false
+	g.attackTargetIsCreep = false
 	g.attackTarget = -1
 	g.hasTarget = false
 	g.resetEnemies()
@@ -484,6 +501,32 @@ func (g *Game) updatePlayerRespawn() {
 	g.message = "Player chassis respawned."
 }
 
+func (g *Game) damageAIHeroFromCreep() {
+	g.aiHero.health--
+	if g.aiHero.health > 0 {
+		return
+	}
+	g.aiHero.active = false
+	g.aiHeroRespawnTimer = g.enemyHeroRespawnDelay()
+	g.attackHero = false
+	g.hasTarget = false
+	g.message = "Enemy hero defeated by allied creeps."
+}
+
+func (g *Game) damagePlayerFromCreep() {
+	g.playerHealth--
+	if g.playerHealth > 0 {
+		return
+	}
+	g.playerActive = false
+	g.playerRespawnTimer = g.enemyHeroRespawnDelay()
+	g.attackHero = false
+	g.attackTarget = -1
+	g.attackTargetIsCreep = false
+	g.hasTarget = false
+	g.message = "Chassis destroyed by enemy creeps. Respawn timer started."
+}
+
 func (g *Game) updateMinionWave() {
 	if g.minionSpawnTimer > 0 {
 		g.minionSpawnTimer--
@@ -500,6 +543,13 @@ func (g *Game) updateMinionWave() {
 		}
 		if minion.attackCD > 0 {
 			minion.attackCD--
+		}
+		if g.aiHero.active && math.Hypot(g.aiHero.x-minion.x, g.aiHero.y-minion.y) <= creepHeroRange {
+			if minion.attackCD == 0 {
+				minion.attackCD = 30
+				g.damageAIHeroFromCreep()
+			}
+			continue
 		}
 		opponentIndex := g.closestEnemyMinion(index)
 		if opponentIndex >= 0 && math.Abs(g.enemyMinions[opponentIndex].x-minion.x) <= 28 {
@@ -537,6 +587,13 @@ func (g *Game) updateMinionWave() {
 		}
 		if minion.attackCD > 0 {
 			minion.attackCD--
+		}
+		if g.playerActive && math.Hypot(g.playerX-minion.x, g.playerY-minion.y) <= creepHeroRange {
+			if minion.attackCD == 0 {
+				minion.attackCD = 30
+				g.damagePlayerFromCreep()
+			}
+			continue
 		}
 		if g.closestAllyMinion(index) >= 0 && math.Abs(g.minions[g.closestAllyMinion(index)].x-minion.x) <= 28 {
 			continue
@@ -669,6 +726,15 @@ func (g *Game) aiHeroAt(x, y float64) bool {
 	return g.aiHero.active && math.Hypot(g.aiHero.x-x, g.aiHero.y-y) <= 28
 }
 
+func (g *Game) enemyMinionAt(x, y float64) (int, bool) {
+	for index, minion := range g.enemyMinions {
+		if minion.active && math.Hypot(minion.x-x, minion.y-y) <= 22 {
+			return index, true
+		}
+	}
+	return -1, false
+}
+
 func (g *Game) updateAutoAttack() {
 	if g.attackHero {
 		if !g.aiHero.active {
@@ -699,6 +765,38 @@ func (g *Game) updateAutoAttack() {
 			return
 		}
 		g.message = fmt.Sprintf("Auto-attack hit enemy hero (%d health)", g.aiHero.health)
+		return
+	}
+	if g.attackTargetIsCreep {
+		if g.attackTarget < 0 || g.attackTarget >= len(g.enemyMinions) || !g.enemyMinions[g.attackTarget].active {
+			g.attackTarget = -1
+			g.attackTargetIsCreep = false
+			g.hasTarget = false
+			return
+		}
+		creep := &g.enemyMinions[g.attackTarget]
+		attackRange := g.selectedAttackRange()
+		if math.Hypot(creep.x-g.playerX, creep.y-g.playerY) <= attackRange {
+			g.hasTarget = false
+		}
+		if math.Hypot(creep.x-g.playerX, creep.y-g.playerY) > attackRange || g.attackCooldown > 0 {
+			return
+		}
+		creep.health--
+		g.attackCooldown = 30
+		g.attackAnimation = 10
+		g.attackStartX, g.attackStartY = g.playerX, g.playerY
+		g.attackEndX, g.attackEndY = creep.x, creep.y
+		g.attackVisualRanged = g.autoAttackRanged
+		if creep.health <= 0 {
+			creep.active = false
+			g.attackTarget = -1
+			g.attackTargetIsCreep = false
+			g.hasTarget = false
+			g.message = "Enemy creep destroyed."
+			return
+		}
+		g.message = fmt.Sprintf("Auto-attack hit enemy creep (%d health)", creep.health)
 		return
 	}
 	if g.attackTarget < 0 || g.attackTarget >= len(g.enemies) || !g.enemies[g.attackTarget].active {
@@ -751,6 +849,9 @@ func (g *Game) refreshAttackPath() {
 	var active bool
 	if g.attackHero && g.aiHero.active {
 		targetX, targetY = g.aiHero.x, g.aiHero.y
+		active = true
+	} else if g.attackTargetIsCreep && g.attackTarget >= 0 && g.attackTarget < len(g.enemyMinions) && g.enemyMinions[g.attackTarget].active {
+		targetX, targetY = g.enemyMinions[g.attackTarget].x, g.enemyMinions[g.attackTarget].y
 		active = true
 	} else if g.attackTarget >= 0 && g.attackTarget < len(g.enemies) && g.enemies[g.attackTarget].active {
 		targetX, targetY = g.enemies[g.attackTarget].x, g.enemies[g.attackTarget].y
