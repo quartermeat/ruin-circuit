@@ -19,7 +19,7 @@ const (
 	gridWidth      = 28
 	gridHeight     = 14
 	tileSize       = 32
-	version        = "v0.15.0"
+	version        = "v0.16.0"
 	maxHealth      = 10
 	maxTowerHP     = 20
 	towerRange     = 180.0
@@ -27,6 +27,7 @@ const (
 	laneY          = 288.0
 	blueHeroSpawnX = 150.0
 	redHeroSpawnX  = 810.0
+	dungeonExitX   = 820.0
 )
 
 var ruinWalls = [][4]float64{}
@@ -65,6 +66,17 @@ type AIHero struct {
 	threat           bool
 	autoAttackPicked bool
 	autoAttackRanged bool
+	inDungeon        bool
+	dungeonX         float64
+	dungeonY         float64
+	dungeonCreeps    []DungeonCreep
+}
+
+type DungeonCreep struct {
+	x, y     float64
+	health   int
+	attackCD int
+	active   bool
 }
 
 type Game struct {
@@ -86,6 +98,12 @@ type Game struct {
 	aiHeroRespawnTimer  int
 	portals             []Portal
 	inDungeon           bool
+	dungeonX            float64
+	dungeonY            float64
+	dungeonTargetX      float64
+	dungeonTargetY      float64
+	dungeonHasTarget    bool
+	dungeonCreeps       []DungeonCreep
 	showBuild           bool
 	autoAttackPicked    bool
 	autoAttackRanged    bool
@@ -93,6 +111,7 @@ type Game struct {
 	attackTargetIsCreep bool
 	attackHero          bool
 	attackTower         bool
+	portalTarget        bool
 	attackCooldown      int
 	attackAnimation     int
 	attackStartX        float64
@@ -140,6 +159,9 @@ func (g *Game) Update() error {
 		return nil
 	}
 	if g.inDungeon {
+		g.updateDungeon()
+		g.updateLaneBackground()
+		g.matchFrames++
 		return nil
 	}
 	if inpututil.IsMouseButtonJustPressed(ebiten.MouseButtonLeft) {
@@ -181,9 +203,16 @@ func (g *Game) Update() error {
 	if inpututil.IsMouseButtonJustPressed(ebiten.MouseButtonRight) {
 		mouseX, mouseY := ebiten.CursorPosition()
 		if portalIndex, ok := g.portalAt(float64(mouseX), float64(mouseY)); ok {
-			g.inDungeon = true
-			g.hasTarget = false
-			g.message = fmt.Sprintf("Entering pop-up dungeon: %s", g.portals[portalIndex].name)
+			g.attackHero = false
+			g.attackTower = false
+			g.attackTargetIsCreep = false
+			g.attackTarget = -1
+			g.portalTarget = true
+			g.targetX, g.targetY = g.portals[portalIndex].x, g.portals[portalIndex].y
+			g.path = findPath(worldToCellOrDefault(g.playerX, g.playerY), worldToCellOrDefault(g.targetX, g.targetY))
+			g.pathIndex = 1
+			g.hasTarget = len(g.path) > 1
+			g.message = fmt.Sprintf("Moving to dungeon portal: %s", g.portals[portalIndex].name)
 			return nil
 		}
 		if g.enemyTowerAt(float64(mouseX), float64(mouseY)) {
@@ -206,6 +235,7 @@ func (g *Game) Update() error {
 			}
 			g.attackHero = true
 			g.attackTower = false
+			g.portalTarget = false
 			g.attackTarget = -1
 			g.targetX, g.targetY = g.aiHero.x, g.aiHero.y
 			target := worldToCellOrDefault(g.targetX, g.targetY)
@@ -222,6 +252,7 @@ func (g *Game) Update() error {
 			}
 			g.attackHero = false
 			g.attackTower = false
+			g.portalTarget = false
 			g.attackTargetIsCreep = true
 			g.attackTarget = creepIndex
 			g.targetX, g.targetY = g.enemyMinions[creepIndex].x, g.enemyMinions[creepIndex].y
@@ -249,6 +280,7 @@ func (g *Game) Update() error {
 		}
 		g.attackHero = false
 		g.attackTower = false
+		g.portalTarget = false
 		g.attackTargetIsCreep = false
 		g.attackTarget = -1
 		g.targetX, g.targetY = float64(mouseX), float64(mouseY)
@@ -285,6 +317,10 @@ func (g *Game) Update() error {
 				g.playerY += dy / distance * math.Min(step, distance)
 			}
 		}
+	}
+	if g.playerActive && g.portalAtPlayer() {
+		g.enterDungeon()
+		return nil
 	}
 	g.updateAutoAttack()
 	g.updateEnemyAttacks()
@@ -433,12 +469,35 @@ func (g *Game) Draw(screen *ebiten.Image) {
 		text.Draw(screen, "TAB to close", basicfont.Face7x13, 430, 330, color.RGBA{240, 216, 150, 255})
 	}
 	if g.inDungeon {
-		ebitenutil.DrawRect(screen, 170, 92, 620, 330, color.RGBA{7, 10, 19, 248})
-		text.Draw(screen, "POP-UP DUNGEON // INSTANCE ACTIVE", basicfont.Face7x13, 330, 130, color.RGBA{210, 160, 245, 255})
-		text.Draw(screen, "The lane portal has opened a temporary combat space.", basicfont.Face7x13, 260, 170, color.White)
-		text.Draw(screen, "DUNGEON RULES COMING NEXT", basicfont.Face7x13, 355, 235, color.RGBA{240, 216, 150, 255})
-		text.Draw(screen, "ESC  RETURN TO LANE", basicfont.Face7x13, 390, 360, color.RGBA{210, 160, 245, 255})
+		g.drawDungeon(screen)
 	}
+}
+
+func (g *Game) drawDungeon(screen *ebiten.Image) {
+	ebitenutil.DrawRect(screen, 32, 48, 896, 448, color.RGBA{8, 11, 21, 255})
+	for y := 80; y < 470; y += 32 {
+		for x := 64; x < 896; x += 32 {
+			shade := uint8(20 + ((x/32+y/32)%3)*5)
+			ebitenutil.DrawRect(screen, float64(x), float64(y), 30, 30, color.RGBA{shade, shade + 2, shade + 10, 255})
+		}
+	}
+	text.Draw(screen, "POP-UP DUNGEON // ESCAPE INSTANCE", basicfont.Face7x13, 330, 72, color.RGBA{210, 160, 245, 255})
+	ebitenutil.DrawRect(screen, dungeonExitX-18, 240, 36, 96, color.RGBA{105, 50, 155, 230})
+	ebitenutil.DrawRect(screen, dungeonExitX-10, 248, 20, 80, color.RGBA{210, 130, 245, 230})
+	text.Draw(screen, "EXIT", basicfont.Face7x13, int(dungeonExitX)-15, 355, color.RGBA{210, 160, 245, 255})
+	for _, creep := range g.dungeonCreeps {
+		if !creep.active {
+			continue
+		}
+		ebitenutil.DrawRect(screen, creep.x-8, creep.y-8, 16, 16, color.RGBA{205, 95, 75, 255})
+		drawHealthBar(screen, creep.x, creep.y-14, creep.health, 2, color.RGBA{240, 105, 90, 255})
+	}
+	if g.playerActive {
+		ebitenutil.DrawRect(screen, g.dungeonX-11, g.dungeonY-11, 22, 22, color.RGBA{92, 196, 207, 255})
+		drawHealthBar(screen, g.dungeonX, g.dungeonY-22, g.playerHealth, maxHealth, color.RGBA{90, 205, 225, 255})
+	}
+	text.Draw(screen, "RIGHT-CLICK TO MOVE // REACH THE EXIT", basicfont.Face7x13, 300, 480, color.RGBA{240, 216, 150, 255})
+	text.Draw(screen, "LANE CONTINUES IN BACKGROUND", basicfont.Face7x13, 350, 505, color.RGBA{150, 190, 195, 255})
 }
 
 func (g *Game) respec() {
@@ -456,6 +515,103 @@ func (g *Game) respec() {
 func (g *Game) chooseAIHeroPath() {
 	g.aiHero.autoAttackPicked = true
 	g.aiHero.autoAttackRanged = rand.Intn(2) == 1
+}
+
+func (g *Game) portalAtPlayer() bool {
+	if len(g.portals) == 0 {
+		return false
+	}
+	portal := g.portals[0]
+	return math.Hypot(g.playerX-portal.x, g.playerY-portal.y) <= 22
+}
+
+func (g *Game) enterDungeon() {
+	g.inDungeon = true
+	g.portalTarget = false
+	g.hasTarget = false
+	g.dungeonX, g.dungeonY = 160, 288
+	g.dungeonTargetX, g.dungeonTargetY = g.dungeonX, g.dungeonY
+	g.dungeonCreeps = newDungeonCreeps(false)
+	g.aiHero.inDungeon = true
+	g.aiHero.dungeonX, g.aiHero.dungeonY = 800, 288
+	g.aiHero.dungeonCreeps = newDungeonCreeps(true)
+	g.message = "Entered the dungeon. Reach the exit portal."
+}
+
+func newDungeonCreeps(reverse bool) []DungeonCreep {
+	positions := [][2]float64{{330, 190}, {430, 360}, {540, 220}, {630, 350}, {700, 180}, {760, 390}}
+	creeps := make([]DungeonCreep, len(positions))
+	for index, position := range positions {
+		x, y := position[0], position[1]
+		if reverse {
+			x = 960 - x
+		}
+		creeps[index] = DungeonCreep{x: x, y: y, health: 2, active: true}
+	}
+	return creeps
+}
+
+func (g *Game) updateDungeon() {
+	if inpututil.IsMouseButtonJustPressed(ebiten.MouseButtonRight) {
+		mouseX, mouseY := ebiten.CursorPosition()
+		g.dungeonTargetX = math.Max(120, math.Min(dungeonExitX, float64(mouseX)))
+		g.dungeonTargetY = math.Max(110, math.Min(430, float64(mouseY)))
+		g.dungeonHasTarget = true
+	}
+	if g.dungeonHasTarget {
+		dx, dy := g.dungeonTargetX-g.dungeonX, g.dungeonTargetY-g.dungeonY
+		distance := math.Hypot(dx, dy)
+		if distance < 4 {
+			g.dungeonX, g.dungeonY = g.dungeonTargetX, g.dungeonTargetY
+			g.dungeonHasTarget = false
+		} else {
+			step := math.Min(3.2, distance)
+			g.dungeonX += dx / distance * step
+			g.dungeonY += dy / distance * step
+		}
+	}
+	hits := updateDungeonCreeps(g.dungeonCreeps, g.dungeonX, g.dungeonY)
+	for index := 0; index < hits; index++ {
+		g.playerHealth--
+	}
+	if g.playerHealth <= 0 {
+		g.playerActive = false
+		g.inDungeon = false
+		g.playerRespawnTimer = g.enemyHeroRespawnDelay()
+		g.message = "Chassis destroyed in the dungeon. Respawn timer started."
+		return
+	}
+	if g.dungeonX >= dungeonExitX-20 {
+		g.inDungeon = false
+		g.playerX, g.playerY = g.portals[0].x, g.portals[0].y
+		g.message = "Dungeon exit reached. Returned to the lane portal."
+	}
+}
+
+func updateDungeonCreeps(creeps []DungeonCreep, heroX, heroY float64) int {
+	hits := 0
+	for index := range creeps {
+		creep := &creeps[index]
+		if !creep.active {
+			continue
+		}
+		if creep.attackCD > 0 {
+			creep.attackCD--
+		}
+		dx, dy := heroX-creep.x, heroY-creep.y
+		distance := math.Hypot(dx, dy)
+		if distance > 38 {
+			step := math.Min(0.9, distance-38)
+			if distance > 0 {
+				creep.x += dx / distance * step
+				creep.y += dy / distance * step
+			}
+		} else if creep.attackCD == 0 {
+			creep.attackCD = 30
+			hits++
+		}
+	}
+	return hits
 }
 
 func (g *Game) resetEnemies() {
@@ -494,6 +650,10 @@ func (g *Game) portalAt(x, y float64) (int, bool) {
 }
 
 func (g *Game) updateAIHero() {
+	if g.aiHero.inDungeon {
+		g.updateAIHeroDungeon()
+		return
+	}
 	if !g.aiHero.active {
 		if g.aiHeroRespawnTimer > 0 {
 			g.aiHeroRespawnTimer--
@@ -550,6 +710,26 @@ func (g *Game) updateAIHero() {
 	}
 }
 
+func (g *Game) updateAIHeroDungeon() {
+	hits := updateDungeonCreeps(g.aiHero.dungeonCreeps, g.aiHero.dungeonX, g.aiHero.dungeonY)
+	for index := 0; index < hits; index++ {
+		g.aiHero.health--
+	}
+	if g.aiHero.health <= 0 {
+		g.aiHero.active = false
+		g.aiHero.inDungeon = false
+		g.aiHeroRespawnTimer = g.enemyHeroRespawnDelay()
+		g.message = "Enemy hero was defeated in the dungeon."
+		return
+	}
+	if g.aiHero.dungeonX > 140 {
+		g.aiHero.dungeonX -= 2.4
+		return
+	}
+	g.aiHero.inDungeon = false
+	g.aiHero.x, g.aiHero.y = redHeroSpawnX, laneY
+}
+
 func (g *Game) updatePlayerRespawn() {
 	if g.playerRespawnTimer > 0 {
 		g.playerRespawnTimer--
@@ -559,6 +739,12 @@ func (g *Game) updatePlayerRespawn() {
 	g.playerHealth = maxHealth
 	g.playerActive = true
 	g.message = "Player chassis respawned."
+}
+
+func (g *Game) updateLaneBackground() {
+	g.updateMinionWave()
+	g.updateTowerAttacks()
+	g.updateAIHero()
 }
 
 func (g *Game) damageAIHeroFromCreep() {

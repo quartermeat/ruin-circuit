@@ -117,7 +117,7 @@ When the workbench is closed, `Tab` has the same behavior as clicking RESPEC: it
 
 The prototype setting is now a first MOBA-style lane instead of a dungeon. An allied tower and enemy tower frame the lane, allied combat drones automatically respawn at our tower and push toward the enemy tower, and the HUD tracks the active wave and enemy-tower health.
 
-The lane now has a single-lane MOBA baseline: allied and enemy waves spawn in matching numbers on the same timer and fight to a natural stalemate. Towers now attack nearby opposing creeps with matching range, damage, and cooldown. The enemy AI hero pushes left toward the blue tower and can break the stalemate by damaging it. Creep attack cooldowns are symmetric during contact, so neither side wins without a hero. The purple lane portal sits off the creep lane and opens a pop-up dungeon instance overlay; `Esc` returns to the lane. The portal loop is intentionally a shell for the next dungeon-combat implementation.
+The lane now has a single-lane MOBA baseline: allied and enemy waves spawn in matching numbers on the same timer and fight to a natural stalemate. Towers now attack nearby opposing creeps with matching range, damage, and cooldown. The enemy AI hero pushes left toward the blue tower and can break the stalemate by damaging it. Creep attack cooldowns are symmetric during contact, so neither side wins without a hero. The purple lane portal sits off the creep lane and opens a separate escape dungeon.
 
 New runs begin paused with the RESPEC/workbench screen open, requiring an auto-attack path before the lane can start. RESPEC pauses the lane whenever it is opened, and all hostile defenders now spawn in the lane rather than in off-lane positions.
 
@@ -136,6 +136,8 @@ All active creeps and heroes now display floating health bars above their heads,
 The enemy hero now responds to threat: once a player attack hits it, the hero abandons tower pressure, pursues the player, and attacks at its own selected melee or ranged distance until that life ends. Respawning clears that threat state.
 
 Hero spawn points are alliance-based: the blue player starts and respawns near the blue tower, while the red AI hero starts and respawns near the red tower. Esc uses those same alliance spawn points.
+
+Reaching the lane portal physically sends the player into an escape dungeon and sends the enemy hero into its own mirrored instance. Dungeon creeps only pursue their local hero. The lane, towers, waves, and both dungeon instances continue updating in the background; reaching the dungeon exit returns that hero to the lane at its portal-side entry point.
 
 `Esc` now resets the entire run: towers, waves, heroes, enemies, build choices, and dungeon state all return to the initial paused workbench screen.
 
