@@ -98,3 +98,5 @@ The launcher cache-busts the WASM URL from the version in `main.go`, and the sam
 The build workbench now has an always-available RESPEC button. Respec is free, opens the workbench immediately, and returns the build to `CHOOSE THE PATH` until the first auto-attack chassis is selected, keeping experimentation central to the prototype.
 
 The first selected path now has a playable effect: right-click an enemy to target it, move into range, and the auto-attack will fire automatically until that enemy is destroyed. Enemies show simple health bars, and attacking is locked until the path is chosen.
+
+Enemies now create threat when targeted or when the chassis enters their proximity radius. Threatened enemies damage the player at close range, the HUD shows chassis health, and defeat triggers an immediate emergency reboot at full health for continued experimentation.

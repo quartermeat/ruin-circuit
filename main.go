@@ -18,7 +18,8 @@ const (
 	gridWidth    = 28
 	gridHeight   = 14
 	tileSize     = 32
-	version      = "v0.3.0"
+	version      = "v0.4.0"
+	maxHealth    = 10
 )
 
 var ruinWalls = [][4]float64{{90, 90, 180, 18}, {90, 90, 18, 115}, {680, 80, 190, 18}, {850, 80, 18, 130}, {330, 420, 260, 18}, {330, 350, 18, 88}}
@@ -26,10 +27,12 @@ var ruinWalls = [][4]float64{{90, 90, 180, 18}, {90, 90, 18, 115}, {680, 80, 190
 type Cell struct{ x, y int }
 
 type Enemy struct {
-	x, y   float64
-	name   string
-	health int
-	active bool
+	x, y     float64
+	name     string
+	health   int
+	threat   bool
+	attackCD int
+	active   bool
 }
 
 type Game struct {
@@ -43,6 +46,7 @@ type Game struct {
 	autoAttackPicked bool
 	attackTarget     int
 	attackCooldown   int
+	playerHealth     int
 	message          string
 }
 
@@ -56,6 +60,7 @@ func NewGame() *Game {
 			{x: 700, y: 390, name: "vault sentinel", health: 3, active: true},
 		},
 		attackTarget: -1,
+		playerHealth: maxHealth,
 		message:      "Right-click to move. Open the workbench and choose the path.",
 	}
 }
@@ -125,6 +130,7 @@ func (g *Game) Update() error {
 		}
 	}
 	g.updateAutoAttack()
+	g.updateEnemyAttacks()
 	if g.attackCooldown > 0 {
 		g.attackCooldown--
 	}
@@ -164,6 +170,9 @@ func (g *Game) Draw(screen *ebiten.Image) {
 		}
 		ebitenutil.DrawRect(screen, enemy.x-10, enemy.y-8, 20, 16, color.RGBA{145, 58, 65, 255})
 		ebitenutil.DrawRect(screen, enemy.x-4, enemy.y-13, 8, 5, color.RGBA{227, 153, 74, 255})
+		if enemy.threat {
+			ebitenutil.DrawRect(screen, enemy.x-3, enemy.y-17, 6, 2, color.RGBA{255, 115, 90, 255})
+		}
 		ebitenutil.DrawRect(screen, enemy.x-14, enemy.y-22, 28, 3, color.RGBA{34, 20, 25, 255})
 		ebitenutil.DrawRect(screen, enemy.x-14, enemy.y-22, float64(enemy.health)*9.3, 3, color.RGBA{220, 80, 85, 255})
 	}
@@ -184,6 +193,7 @@ func (g *Game) Draw(screen *ebiten.Image) {
 		attackStatus = "AUTO-ATTACK: ONLINE"
 	}
 	text.Draw(screen, attackStatus, basicfont.Face7x13, 32, 445, color.RGBA{190, 224, 224, 255})
+	text.Draw(screen, fmt.Sprintf("CHASSIS HP: %02d/%02d", g.playerHealth, maxHealth), basicfont.Face7x13, 32, 460, color.RGBA{235, 150, 155, 255})
 	text.Draw(screen, g.message, basicfont.Face7x13, 32, 520, color.RGBA{220, 200, 150, 255})
 	for i, skill := range []string{"Q  COMPONENT", "W  COMPONENT", "E  COMPONENT", "R  COMPONENT"} {
 		x := 32 + i*142
@@ -235,6 +245,7 @@ func (g *Game) updateAutoAttack() {
 		return
 	}
 	enemy := &g.enemies[g.attackTarget]
+	enemy.threat = true
 	if math.Hypot(enemy.x-g.playerX, enemy.y-g.playerY) > 58 || g.attackCooldown > 0 {
 		return
 	}
@@ -248,6 +259,35 @@ func (g *Game) updateAutoAttack() {
 		return
 	}
 	g.message = fmt.Sprintf("Auto-attack hit %s (%d health)", enemy.name, enemy.health)
+}
+
+func (g *Game) updateEnemyAttacks() {
+	for index := range g.enemies {
+		enemy := &g.enemies[index]
+		if !enemy.active {
+			continue
+		}
+		if enemy.attackCD > 0 {
+			enemy.attackCD--
+		}
+		distance := math.Hypot(enemy.x-g.playerX, enemy.y-g.playerY)
+		if g.attackTarget == index || distance <= 135 {
+			enemy.threat = true
+		}
+		if !enemy.threat || distance > 58 || enemy.attackCD > 0 {
+			continue
+		}
+		enemy.attackCD = 45
+		g.playerHealth--
+		g.message = fmt.Sprintf("%s hit the chassis (%d/%d HP)", enemy.name, g.playerHealth, maxHealth)
+		if g.playerHealth <= 0 {
+			g.playerHealth = maxHealth
+			g.playerX, g.playerY = 496, 288
+			g.hasTarget = false
+			g.attackTarget = -1
+			g.message = "Chassis disabled. Emergency reboot complete."
+		}
+	}
 }
 
 func pointInRect(x, y, left, top, width, height int) bool {
