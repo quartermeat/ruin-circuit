@@ -10,7 +10,7 @@
   <script src="wasm_exec.js"></script>
   <script>
     const go = new Go();
-    WebAssembly.instantiateStreaming(fetch("game.wasm?v=0.9.0"), go.importObject).then(result => go.run(result.instance));
+    WebAssembly.instantiateStreaming(fetch("game.wasm?v=0.10.0"), go.importObject).then(result => go.run(result.instance));
   </script>
 </body>
 </html>

@@ -18,7 +18,7 @@ const (
 	gridWidth    = 28
 	gridHeight   = 14
 	tileSize     = 32
-	version      = "v0.9.0"
+	version      = "v0.10.0"
 	maxHealth    = 10
 	maxTowerHP   = 20
 )
@@ -46,6 +46,17 @@ type Minion struct {
 	active   bool
 }
 
+type Portal struct {
+	x, y float64
+	name string
+}
+
+type AIHero struct {
+	x, y     float64
+	health   int
+	attackCD int
+}
+
 type Game struct {
 	playerX, playerY   float64
 	targetX, targetY   float64
@@ -56,6 +67,9 @@ type Game struct {
 	minions            []Minion
 	minionSpawnTimer   int
 	enemyTowerHealth   int
+	aiHero             AIHero
+	portals            []Portal
+	inDungeon          bool
 	showBuild          bool
 	autoAttackPicked   bool
 	autoAttackRanged   bool
@@ -87,6 +101,8 @@ func NewGame() *Game {
 		},
 		minionSpawnTimer: 240,
 		enemyTowerHealth: maxTowerHP,
+		aiHero:           AIHero{x: 720, y: 160, health: 10},
+		portals:          []Portal{{x: 470, y: 288, name: "SUNKEN ARCHIVE"}, {x: 530, y: 160, name: "SIGNAL VAULT"}},
 		attackTarget:     -1,
 		playerHealth:     maxHealth,
 		message:          "Right-click to move. Open the workbench and choose the path.",
@@ -94,6 +110,13 @@ func NewGame() *Game {
 }
 
 func (g *Game) Update() error {
+	if g.inDungeon {
+		if inpututil.IsKeyJustPressed(ebiten.KeyEscape) {
+			g.inDungeon = false
+			g.message = "Returned to the lane."
+		}
+		return nil
+	}
 	if inpututil.IsMouseButtonJustPressed(ebiten.MouseButtonLeft) {
 		mouseX, mouseY := ebiten.CursorPosition()
 		if pointInRect(mouseX, mouseY, 760, 465, 168, 34) {
@@ -110,6 +133,12 @@ func (g *Game) Update() error {
 	}
 	if inpututil.IsMouseButtonJustPressed(ebiten.MouseButtonRight) {
 		mouseX, mouseY := ebiten.CursorPosition()
+		if portalIndex, ok := g.portalAt(float64(mouseX), float64(mouseY)); ok {
+			g.inDungeon = true
+			g.hasTarget = false
+			g.message = fmt.Sprintf("Entering pop-up dungeon: %s", g.portals[portalIndex].name)
+			return nil
+		}
 		if enemyIndex, ok := g.enemyAt(float64(mouseX), float64(mouseY)); ok {
 			if !g.autoAttackPicked {
 				g.message = "Choose the path before engaging enemies."
@@ -165,6 +194,7 @@ func (g *Game) Update() error {
 	g.updateAutoAttack()
 	g.updateEnemyAttacks()
 	g.updateMinionWave()
+	g.updateAIHero()
 	if g.attackCooldown > 0 {
 		g.attackCooldown--
 	}
@@ -204,8 +234,20 @@ func (g *Game) Draw(screen *ebiten.Image) {
 	// MOBA lane and towers.
 	ebitenutil.DrawRect(screen, 32, 238, 896, 100, color.RGBA{28, 38, 48, 255})
 	ebitenutil.DrawRect(screen, 32, 286, 896, 4, color.RGBA{63, 87, 96, 255})
+	ebitenutil.DrawRect(screen, 32, 112, 896, 96, color.RGBA{25, 35, 45, 255})
+	ebitenutil.DrawRect(screen, 32, 158, 896, 4, color.RGBA{58, 78, 92, 255})
 	drawTower(screen, 96, 288, color.RGBA{76, 160, 190, 255}, color.RGBA{125, 220, 230, 255}, "ALLY TOWER", maxTowerHP)
 	drawTower(screen, 864, 288, color.RGBA{165, 70, 80, 255}, color.RGBA{245, 135, 125, 255}, "ENEMY TOWER", g.enemyTowerHealth)
+	drawTower(screen, 96, 160, color.RGBA{76, 160, 190, 255}, color.RGBA{125, 220, 230, 255}, "ALLY TOWER", maxTowerHP)
+	drawTower(screen, 864, 160, color.RGBA{165, 70, 80, 255}, color.RGBA{245, 135, 125, 255}, "ENEMY TOWER", g.enemyTowerHealth)
+	for _, portal := range g.portals {
+		ebitenutil.DrawRect(screen, portal.x-14, portal.y-14, 28, 28, color.RGBA{105, 50, 155, 230})
+		ebitenutil.DrawRect(screen, portal.x-8, portal.y-8, 16, 16, color.RGBA{210, 130, 245, 230})
+		text.Draw(screen, "PORTAL", basicfont.Face7x13, int(portal.x)-21, int(portal.y)+28, color.RGBA{210, 160, 245, 255})
+	}
+	ebitenutil.DrawRect(screen, g.aiHero.x-10, g.aiHero.y-10, 20, 20, color.RGBA{120, 210, 155, 255})
+	ebitenutil.DrawRect(screen, g.aiHero.x-5, g.aiHero.y-16, 10, 5, color.RGBA{205, 245, 185, 255})
+	text.Draw(screen, "AI HERO", basicfont.Face7x13, int(g.aiHero.x)-22, int(g.aiHero.y)-22, color.RGBA{165, 235, 180, 255})
 	for _, minion := range g.minions {
 		if !minion.active {
 			continue
@@ -277,6 +319,13 @@ func (g *Game) Draw(screen *ebiten.Image) {
 		text.Draw(screen, "RANGED ATTACK", basicfont.Face7x13, 310, 306, color.RGBA{240, 220, 150, 255})
 		text.Draw(screen, "TAB to close", basicfont.Face7x13, 430, 330, color.RGBA{240, 216, 150, 255})
 	}
+	if g.inDungeon {
+		ebitenutil.DrawRect(screen, 170, 92, 620, 330, color.RGBA{7, 10, 19, 248})
+		text.Draw(screen, "POP-UP DUNGEON // INSTANCE ACTIVE", basicfont.Face7x13, 330, 130, color.RGBA{210, 160, 245, 255})
+		text.Draw(screen, "The lane portal has opened a temporary combat space.", basicfont.Face7x13, 260, 170, color.White)
+		text.Draw(screen, "DUNGEON RULES COMING NEXT", basicfont.Face7x13, 355, 235, color.RGBA{240, 216, 150, 255})
+		text.Draw(screen, "ESC  RETURN TO LANE", basicfont.Face7x13, 390, 360, color.RGBA{210, 160, 245, 255})
+	}
 }
 
 func (g *Game) respec() {
@@ -307,6 +356,26 @@ func (g *Game) resetEnemies() {
 		{x: 150, y: 306, health: 2, active: true},
 	}
 	g.minionSpawnTimer = 240
+	g.aiHero = AIHero{x: 720, y: 160, health: 10}
+}
+
+func (g *Game) portalAt(x, y float64) (int, bool) {
+	for index, portal := range g.portals {
+		if math.Hypot(portal.x-x, portal.y-y) <= 24 {
+			return index, true
+		}
+	}
+	return -1, false
+}
+
+func (g *Game) updateAIHero() {
+	if g.aiHero.x >= 825 {
+		return
+	}
+	g.aiHero.x += 0.55
+	if g.aiHero.attackCD > 0 {
+		g.aiHero.attackCD--
+	}
 }
 
 func (g *Game) updateMinionWave() {

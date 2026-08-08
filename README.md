@@ -116,3 +116,5 @@ For playtesting, RESPEC also respawns the three starter enemies at their origina
 When the workbench is closed, `Tab` has the same behavior as clicking RESPEC: it resets the build, respawns the starter enemies, and opens the workbench. When the workbench is open, `Tab` closes it without resetting, so the menu always has an exit.
 
 The prototype setting is now a first MOBA-style lane instead of a dungeon. An allied tower and enemy tower frame the lane, allied combat drones automatically respawn at our tower and push toward the enemy tower, and the HUD tracks the active wave and enemy-tower health. The existing hostile units remain as defenders for the player to engage.
+
+The lane now previews the broader map loop with a second lane and an AI hero pushing across it. Purple portals in either lane open a pop-up dungeon instance overlay; `Esc` returns to the lane. The portal loop is intentionally a shell for the next dungeon-combat implementation.
