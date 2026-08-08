@@ -100,3 +100,5 @@ The build workbench now has an always-available RESPEC button. Respec is free, o
 The first selected path now has a playable effect: right-click an enemy to target it, move into range, and the auto-attack will fire automatically until that enemy is destroyed. Enemies show simple health bars, and attacking is locked until the path is chosen.
 
 Enemies now create threat when targeted or when the chassis enters their proximity radius. Threatened enemies damage the player at close range, the HUD shows chassis health, and defeat triggers an immediate emergency reboot at full health for continued experimentation.
+
+The workbench now offers two auto-attack paths: close-range and ranged. The ranged path can fire from a larger distance, but enemies still become threatened by the attack and can close in to deal damage.

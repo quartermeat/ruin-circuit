@@ -18,7 +18,7 @@ const (
 	gridWidth    = 28
 	gridHeight   = 14
 	tileSize     = 32
-	version      = "v0.4.0"
+	version      = "v0.5.0"
 	maxHealth    = 10
 )
 
@@ -44,6 +44,7 @@ type Game struct {
 	enemies          []Enemy
 	showBuild        bool
 	autoAttackPicked bool
+	autoAttackRanged bool
 	attackTarget     int
 	attackCooldown   int
 	playerHealth     int
@@ -72,7 +73,12 @@ func (g *Game) Update() error {
 			g.respec()
 		} else if g.showBuild && pointInRect(mouseX, mouseY, 270, 245, 220, 34) {
 			g.autoAttackPicked = true
-			g.message = "Path chosen: auto-attack chassis online. Experiment freely."
+			g.autoAttackRanged = false
+			g.message = "Path chosen: close-range auto-attack online. Experiment freely."
+		} else if g.showBuild && pointInRect(mouseX, mouseY, 270, 285, 220, 34) {
+			g.autoAttackPicked = true
+			g.autoAttackRanged = true
+			g.message = "Path chosen: ranged auto-attack online. Keep your distance."
 		}
 	}
 	if inpututil.IsMouseButtonJustPressed(ebiten.MouseButtonRight) {
@@ -190,7 +196,10 @@ func (g *Game) Draw(screen *ebiten.Image) {
 	text.Draw(screen, "RIGHT-CLICK MOVE", basicfont.Face7x13, 760, 26, color.RGBA{150, 180, 190, 255})
 	attackStatus := "AUTO-ATTACK: CHOOSE PATH"
 	if g.autoAttackPicked {
-		attackStatus = "AUTO-ATTACK: ONLINE"
+		attackStatus = "AUTO-ATTACK: CLOSE-RANGE"
+		if g.autoAttackRanged {
+			attackStatus = "AUTO-ATTACK: RANGED"
+		}
 	}
 	text.Draw(screen, attackStatus, basicfont.Face7x13, 32, 445, color.RGBA{190, 224, 224, 255})
 	text.Draw(screen, fmt.Sprintf("CHASSIS HP: %02d/%02d", g.playerHealth, maxHealth), basicfont.Face7x13, 32, 460, color.RGBA{235, 150, 155, 255})
@@ -208,22 +217,25 @@ func (g *Game) Draw(screen *ebiten.Image) {
 		text.Draw(screen, "Five component sockets will define every ability:", basicfont.Face7x13, 270, 145, color.White)
 		text.Draw(screen, "TRIGGER   TARGETING   EFFECT   MODIFIER   SCALING", basicfont.Face7x13, 270, 180, color.RGBA{125, 221, 225, 255})
 		if g.autoAttackPicked {
-			text.Draw(screen, "PATH: AUTO-ATTACK CHASSIS", basicfont.Face7x13, 270, 220, color.RGBA{150, 230, 175, 255})
+			pathName := "PATH: CLOSE-RANGE AUTO-ATTACK"
+			if g.autoAttackRanged {
+				pathName = "PATH: RANGED AUTO-ATTACK"
+			}
+			text.Draw(screen, pathName, basicfont.Face7x13, 270, 220, color.RGBA{150, 230, 175, 255})
 		} else {
 			text.Draw(screen, "PATH: CHOOSE THE PATH", basicfont.Face7x13, 270, 220, color.RGBA{245, 190, 125, 255})
 		}
 		ebitenutil.DrawRect(screen, 270, 245, 220, 34, color.RGBA{24, 62, 68, 255})
-		if g.autoAttackPicked {
-			text.Draw(screen, "AUTO-ATTACK SELECTED", basicfont.Face7x13, 282, 266, color.RGBA{150, 230, 175, 255})
-		} else {
-			text.Draw(screen, "CHOOSE THE PATH", basicfont.Face7x13, 302, 266, color.RGBA{240, 220, 150, 255})
-		}
+		text.Draw(screen, "CLOSE-RANGE ATTACK", basicfont.Face7x13, 292, 266, color.RGBA{240, 220, 150, 255})
+		ebitenutil.DrawRect(screen, 270, 285, 220, 34, color.RGBA{24, 62, 68, 255})
+		text.Draw(screen, "RANGED ATTACK", basicfont.Face7x13, 310, 306, color.RGBA{240, 220, 150, 255})
 		text.Draw(screen, "TAB to close", basicfont.Face7x13, 430, 330, color.RGBA{240, 216, 150, 255})
 	}
 }
 
 func (g *Game) respec() {
 	g.autoAttackPicked = false
+	g.autoAttackRanged = false
 	g.attackTarget = -1
 	g.hasTarget = false
 	g.showBuild = true
@@ -246,7 +258,11 @@ func (g *Game) updateAutoAttack() {
 	}
 	enemy := &g.enemies[g.attackTarget]
 	enemy.threat = true
-	if math.Hypot(enemy.x-g.playerX, enemy.y-g.playerY) > 58 || g.attackCooldown > 0 {
+	attackRange := 58.0
+	if g.autoAttackRanged {
+		attackRange = 190
+	}
+	if math.Hypot(enemy.x-g.playerX, enemy.y-g.playerY) > attackRange || g.attackCooldown > 0 {
 		return
 	}
 	enemy.health--
