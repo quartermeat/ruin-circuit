@@ -18,7 +18,7 @@ const (
 	gridWidth    = 28
 	gridHeight   = 14
 	tileSize     = 32
-	version      = "v0.5.1"
+	version      = "v0.6.0"
 	maxHealth    = 10
 )
 
@@ -36,19 +36,25 @@ type Enemy struct {
 }
 
 type Game struct {
-	playerX, playerY float64
-	targetX, targetY float64
-	hasTarget        bool
-	path             []Cell
-	pathIndex        int
-	enemies          []Enemy
-	showBuild        bool
-	autoAttackPicked bool
-	autoAttackRanged bool
-	attackTarget     int
-	attackCooldown   int
-	playerHealth     int
-	message          string
+	playerX, playerY   float64
+	targetX, targetY   float64
+	hasTarget          bool
+	path               []Cell
+	pathIndex          int
+	enemies            []Enemy
+	showBuild          bool
+	autoAttackPicked   bool
+	autoAttackRanged   bool
+	attackTarget       int
+	attackCooldown     int
+	attackAnimation    int
+	attackStartX       float64
+	attackStartY       float64
+	attackEndX         float64
+	attackEndY         float64
+	attackVisualRanged bool
+	playerHealth       int
+	message            string
 }
 
 func NewGame() *Game {
@@ -140,6 +146,9 @@ func (g *Game) Update() error {
 	if g.attackCooldown > 0 {
 		g.attackCooldown--
 	}
+	if g.attackAnimation > 0 {
+		g.attackAnimation--
+	}
 	if inpututil.IsKeyJustPressed(ebiten.KeyTab) {
 		g.showBuild = !g.showBuild
 	}
@@ -190,6 +199,7 @@ func (g *Game) Draw(screen *ebiten.Image) {
 	ebitenutil.DrawRect(screen, g.playerX-11, g.playerY-11, 22, 22, color.RGBA{92, 196, 207, 255})
 	ebitenutil.DrawRect(screen, g.playerX-5, g.playerY-17, 10, 7, color.RGBA{191, 235, 220, 255})
 	ebitenutil.DrawRect(screen, g.playerX+9, g.playerY-3, 13, 5, color.RGBA{231, 177, 86, 255})
+	g.drawAttackAnimation(screen)
 
 	text.Draw(screen, "RUIN CIRCUIT // COMBAT CHASSIS ONLINE", basicfont.Face7x13, 32, 26, color.RGBA{190, 224, 224, 255})
 	text.Draw(screen, version, basicfont.Face7x13, 880, 26, color.RGBA{150, 190, 195, 255})
@@ -270,6 +280,10 @@ func (g *Game) updateAutoAttack() {
 	}
 	enemy.health--
 	g.attackCooldown = 30
+	g.attackAnimation = 10
+	g.attackStartX, g.attackStartY = g.playerX, g.playerY
+	g.attackEndX, g.attackEndY = enemy.x, enemy.y
+	g.attackVisualRanged = g.autoAttackRanged
 	if enemy.health <= 0 {
 		enemy.active = false
 		g.attackTarget = -1
@@ -278,6 +292,31 @@ func (g *Game) updateAutoAttack() {
 		return
 	}
 	g.message = fmt.Sprintf("Auto-attack hit %s (%d health)", enemy.name, enemy.health)
+}
+
+func (g *Game) drawAttackAnimation(screen *ebiten.Image) {
+	if g.attackAnimation <= 0 {
+		return
+	}
+	progress := 1 - float64(g.attackAnimation)/10
+	if g.attackVisualRanged {
+		x := g.attackStartX + (g.attackEndX-g.attackStartX)*progress
+		y := g.attackStartY + (g.attackEndY-g.attackStartY)*progress
+		ebitenutil.DrawLine(screen, g.attackStartX, g.attackStartY, x, y, color.RGBA{110, 219, 222, 120})
+		ebitenutil.DrawRect(screen, x-5, y-2, 10, 4, color.RGBA{175, 245, 236, 255})
+		return
+	}
+	dx, dy := g.attackEndX-g.attackStartX, g.attackEndY-g.attackStartY
+	distance := math.Hypot(dx, dy)
+	if distance == 0 {
+		return
+	}
+	perpendicularX, perpendicularY := -dy/distance*12, dx/distance*12
+	centerX := g.attackStartX + dx/distance*30
+	centerY := g.attackStartY + dy/distance*30
+	slashColor := color.RGBA{245, 220, 150, 230}
+	ebitenutil.DrawLine(screen, g.attackStartX, g.attackStartY, centerX+perpendicularX, centerY+perpendicularY, slashColor)
+	ebitenutil.DrawLine(screen, centerX+perpendicularX, centerY+perpendicularY, centerX-perpendicularX, centerY-perpendicularY, slashColor)
 }
 
 func (g *Game) updateEnemyAttacks() {
