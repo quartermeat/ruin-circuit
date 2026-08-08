@@ -18,7 +18,7 @@ const (
 	gridWidth    = 28
 	gridHeight   = 14
 	tileSize     = 32
-	version      = "v0.5.0"
+	version      = "v0.5.1"
 	maxHealth    = 10
 )
 
@@ -261,6 +261,9 @@ func (g *Game) updateAutoAttack() {
 	attackRange := 58.0
 	if g.autoAttackRanged {
 		attackRange = 190
+	}
+	if math.Hypot(enemy.x-g.playerX, enemy.y-g.playerY) <= attackRange {
+		g.hasTarget = false
 	}
 	if math.Hypot(enemy.x-g.playerX, enemy.y-g.playerY) > attackRange || g.attackCooldown > 0 {
 		return

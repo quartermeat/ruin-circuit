@@ -102,3 +102,5 @@ The first selected path now has a playable effect: right-click an enemy to targe
 Enemies now create threat when targeted or when the chassis enters their proximity radius. Threatened enemies damage the player at close range, the HUD shows chassis health, and defeat triggers an immediate emergency reboot at full health for continued experimentation.
 
 The workbench now offers two auto-attack paths: close-range and ranged. The ranged path can fire from a larger distance, but enemies still become threatened by the attack and can close in to deal damage.
+
+The build model uses attributes as damage multipliers. The selected auto-attack establishes a baseline damage identity, while each Q/W/E/R skill choice will carry its own scaling attribute; choices can reinforce one attribute or create a hybrid build. Once an enemy is within the selected auto-attack's effective range, movement stops and the chassis continues attacking from that position.
