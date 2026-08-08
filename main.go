@@ -18,7 +18,7 @@ const (
 	gridWidth    = 28
 	gridHeight   = 14
 	tileSize     = 32
-	version      = "v0.10.0"
+	version      = "v0.11.0"
 	maxHealth    = 10
 	maxTowerHP   = 20
 )
@@ -65,7 +65,9 @@ type Game struct {
 	pathIndex          int
 	enemies            []Enemy
 	minions            []Minion
+	enemyMinions       []Minion
 	minionSpawnTimer   int
+	playerTowerHealth  int
 	enemyTowerHealth   int
 	aiHero             AIHero
 	portals            []Portal
@@ -99,13 +101,19 @@ func NewGame() *Game {
 			{x: 150, y: 288, health: 2, active: true},
 			{x: 150, y: 306, health: 2, active: true},
 		},
-		minionSpawnTimer: 240,
-		enemyTowerHealth: maxTowerHP,
-		aiHero:           AIHero{x: 720, y: 160, health: 10},
-		portals:          []Portal{{x: 470, y: 288, name: "SUNKEN ARCHIVE"}, {x: 530, y: 160, name: "SIGNAL VAULT"}},
-		attackTarget:     -1,
-		playerHealth:     maxHealth,
-		message:          "Right-click to move. Open the workbench and choose the path.",
+		enemyMinions: []Minion{
+			{x: 810, y: 270, health: 2, active: true},
+			{x: 810, y: 288, health: 2, active: true},
+			{x: 810, y: 306, health: 2, active: true},
+		},
+		minionSpawnTimer:  240,
+		playerTowerHealth: maxTowerHP,
+		enemyTowerHealth:  maxTowerHP,
+		aiHero:            AIHero{x: 720, y: 288, health: 10},
+		portals:           []Portal{{x: 470, y: 288, name: "SUNKEN ARCHIVE"}},
+		attackTarget:      -1,
+		playerHealth:      maxHealth,
+		message:           "Right-click to move. Open the workbench and choose the path.",
 	}
 }
 
@@ -234,26 +242,29 @@ func (g *Game) Draw(screen *ebiten.Image) {
 	// MOBA lane and towers.
 	ebitenutil.DrawRect(screen, 32, 238, 896, 100, color.RGBA{28, 38, 48, 255})
 	ebitenutil.DrawRect(screen, 32, 286, 896, 4, color.RGBA{63, 87, 96, 255})
-	ebitenutil.DrawRect(screen, 32, 112, 896, 96, color.RGBA{25, 35, 45, 255})
-	ebitenutil.DrawRect(screen, 32, 158, 896, 4, color.RGBA{58, 78, 92, 255})
-	drawTower(screen, 96, 288, color.RGBA{76, 160, 190, 255}, color.RGBA{125, 220, 230, 255}, "ALLY TOWER", maxTowerHP)
+	drawTower(screen, 96, 288, color.RGBA{76, 160, 190, 255}, color.RGBA{125, 220, 230, 255}, "ALLY TOWER", g.playerTowerHealth)
 	drawTower(screen, 864, 288, color.RGBA{165, 70, 80, 255}, color.RGBA{245, 135, 125, 255}, "ENEMY TOWER", g.enemyTowerHealth)
-	drawTower(screen, 96, 160, color.RGBA{76, 160, 190, 255}, color.RGBA{125, 220, 230, 255}, "ALLY TOWER", maxTowerHP)
-	drawTower(screen, 864, 160, color.RGBA{165, 70, 80, 255}, color.RGBA{245, 135, 125, 255}, "ENEMY TOWER", g.enemyTowerHealth)
 	for _, portal := range g.portals {
 		ebitenutil.DrawRect(screen, portal.x-14, portal.y-14, 28, 28, color.RGBA{105, 50, 155, 230})
 		ebitenutil.DrawRect(screen, portal.x-8, portal.y-8, 16, 16, color.RGBA{210, 130, 245, 230})
 		text.Draw(screen, "PORTAL", basicfont.Face7x13, int(portal.x)-21, int(portal.y)+28, color.RGBA{210, 160, 245, 255})
 	}
-	ebitenutil.DrawRect(screen, g.aiHero.x-10, g.aiHero.y-10, 20, 20, color.RGBA{120, 210, 155, 255})
-	ebitenutil.DrawRect(screen, g.aiHero.x-5, g.aiHero.y-16, 10, 5, color.RGBA{205, 245, 185, 255})
-	text.Draw(screen, "AI HERO", basicfont.Face7x13, int(g.aiHero.x)-22, int(g.aiHero.y)-22, color.RGBA{165, 235, 180, 255})
+	ebitenutil.DrawRect(screen, g.aiHero.x-10, g.aiHero.y-10, 20, 20, color.RGBA{190, 120, 210, 255})
+	ebitenutil.DrawRect(screen, g.aiHero.x-5, g.aiHero.y-16, 10, 5, color.RGBA{240, 190, 245, 255})
+	text.Draw(screen, "AI HERO", basicfont.Face7x13, int(g.aiHero.x)-22, int(g.aiHero.y)-22, color.RGBA{225, 175, 240, 255})
 	for _, minion := range g.minions {
 		if !minion.active {
 			continue
 		}
 		ebitenutil.DrawRect(screen, minion.x-8, minion.y-8, 16, 16, color.RGBA{86, 178, 205, 255})
 		ebitenutil.DrawRect(screen, minion.x-5, minion.y-12, 10, 3, color.RGBA{180, 235, 230, 255})
+	}
+	for _, minion := range g.enemyMinions {
+		if !minion.active {
+			continue
+		}
+		ebitenutil.DrawRect(screen, minion.x-8, minion.y-8, 16, 16, color.RGBA{190, 75, 85, 255})
+		ebitenutil.DrawRect(screen, minion.x-5, minion.y-12, 10, 3, color.RGBA{250, 170, 135, 255})
 	}
 	for _, enemy := range g.enemies {
 		if !enemy.active {
@@ -290,7 +301,7 @@ func (g *Game) Draw(screen *ebiten.Image) {
 	}
 	text.Draw(screen, attackStatus, basicfont.Face7x13, 32, 445, color.RGBA{190, 224, 224, 255})
 	text.Draw(screen, fmt.Sprintf("CHASSIS HP: %02d/%02d", g.playerHealth, maxHealth), basicfont.Face7x13, 32, 460, color.RGBA{235, 150, 155, 255})
-	text.Draw(screen, fmt.Sprintf("ALLY WAVE: %d   ENEMY TOWER: %02d/%02d", g.activeMinions(), g.enemyTowerHealth, maxTowerHP), basicfont.Face7x13, 360, 445, color.RGBA{190, 224, 224, 255})
+	text.Draw(screen, fmt.Sprintf("WAVE: %d v %d   TOWERS: %02d/%02d - %02d/%02d", g.activeMinions(), g.activeEnemyMinions(), g.playerTowerHealth, maxTowerHP, g.enemyTowerHealth, maxTowerHP), basicfont.Face7x13, 300, 445, color.RGBA{190, 224, 224, 255})
 	text.Draw(screen, g.message, basicfont.Face7x13, 32, 520, color.RGBA{220, 200, 150, 255})
 	for i, skill := range []string{"Q  COMPONENT", "W  COMPONENT", "E  COMPONENT", "R  COMPONENT"} {
 		x := 32 + i*142
@@ -350,13 +361,19 @@ func (g *Game) resetEnemies() {
 		enemy.active = true
 	}
 	g.enemyTowerHealth = maxTowerHP
+	g.playerTowerHealth = maxTowerHP
 	g.minions = []Minion{
 		{x: 150, y: 270, health: 2, active: true},
 		{x: 150, y: 288, health: 2, active: true},
 		{x: 150, y: 306, health: 2, active: true},
 	}
+	g.enemyMinions = []Minion{
+		{x: 810, y: 270, health: 2, active: true},
+		{x: 810, y: 288, health: 2, active: true},
+		{x: 810, y: 306, health: 2, active: true},
+	}
 	g.minionSpawnTimer = 240
-	g.aiHero = AIHero{x: 720, y: 160, health: 10}
+	g.aiHero = AIHero{x: 720, y: 288, health: 10}
 }
 
 func (g *Game) portalAt(x, y float64) (int, bool) {
@@ -369,23 +386,26 @@ func (g *Game) portalAt(x, y float64) (int, bool) {
 }
 
 func (g *Game) updateAIHero() {
-	if g.aiHero.x >= 825 {
-		return
-	}
-	g.aiHero.x += 0.55
 	if g.aiHero.attackCD > 0 {
 		g.aiHero.attackCD--
+	}
+	if g.aiHero.x < 825 {
+		g.aiHero.x += 0.55
+		return
+	}
+	if g.enemyTowerHealth > 0 && g.aiHero.attackCD == 0 {
+		g.aiHero.attackCD = 45
+		g.enemyTowerHealth--
 	}
 }
 
 func (g *Game) updateMinionWave() {
-	if g.enemyTowerHealth <= 0 {
-		return
-	}
 	if g.minionSpawnTimer > 0 {
 		g.minionSpawnTimer--
-	} else if len(g.minions) < 6 {
-		g.minions = append(g.minions, Minion{x: 150, y: 288, health: 2, active: true})
+	} else if g.activeMinions() < 6 && g.activeEnemyMinions() < 6 {
+		spawnY := 270 + float64((g.activeMinions()%3)*18)
+		g.minions = append(g.minions, Minion{x: 150, y: spawnY, health: 2, active: true})
+		g.enemyMinions = append(g.enemyMinions, Minion{x: 810, y: spawnY, health: 2, active: true})
 		g.minionSpawnTimer = 240
 	}
 	for index := range g.minions {
@@ -393,20 +413,63 @@ func (g *Game) updateMinionWave() {
 		if !minion.active {
 			continue
 		}
-		if minion.x < 830 {
-			minion.x += 1.1
-			continue
-		}
 		if minion.attackCD > 0 {
 			minion.attackCD--
+		}
+		opponentIndex := g.closestEnemyMinion(index)
+		if opponentIndex >= 0 && math.Abs(g.enemyMinions[opponentIndex].x-minion.x) <= 28 {
+			opponent := &g.enemyMinions[opponentIndex]
+			if minion.attackCD == 0 {
+				minion.attackCD = 30
+				opponent.health--
+			}
+			if opponent.attackCD == 0 {
+				opponent.attackCD = 30
+				minion.health--
+			}
+			if minion.health <= 0 {
+				minion.active = false
+			}
+			if opponent.health <= 0 {
+				opponent.active = false
+			}
 			continue
 		}
-		minion.attackCD = 30
-		g.enemyTowerHealth--
 		if g.enemyTowerHealth <= 0 {
-			g.enemyTowerHealth = 0
-			g.message = "Enemy tower destroyed. Lane victory achieved."
+			continue
 		}
+		if minion.x < 830 {
+			minion.x += 1.1
+		} else if minion.attackCD == 0 {
+			minion.attackCD = 30
+			g.enemyTowerHealth--
+		}
+	}
+	for index := range g.enemyMinions {
+		minion := &g.enemyMinions[index]
+		if !minion.active {
+			continue
+		}
+		if g.closestAllyMinion(index) >= 0 && math.Abs(g.minions[g.closestAllyMinion(index)].x-minion.x) <= 28 {
+			continue
+		}
+		if g.playerTowerHealth <= 0 {
+			continue
+		}
+		if minion.x > 130 {
+			minion.x -= 1.1
+		} else if minion.attackCD == 0 {
+			minion.attackCD = 30
+			g.playerTowerHealth--
+		}
+	}
+	if g.enemyTowerHealth <= 0 {
+		g.enemyTowerHealth = 0
+		g.message = "Enemy tower destroyed. Lane victory achieved."
+	}
+	if g.playerTowerHealth <= 0 {
+		g.playerTowerHealth = 0
+		g.message = "Ally tower destroyed. The lane is lost."
 	}
 }
 
@@ -418,6 +481,44 @@ func (g *Game) activeMinions() int {
 		}
 	}
 	return count
+}
+
+func (g *Game) activeEnemyMinions() int {
+	count := 0
+	for _, minion := range g.enemyMinions {
+		if minion.active {
+			count++
+		}
+	}
+	return count
+}
+
+func (g *Game) closestEnemyMinion(index int) int {
+	best, distance := -1, math.MaxFloat64
+	for enemyIndex, enemy := range g.enemyMinions {
+		if !enemy.active {
+			continue
+		}
+		current := math.Abs(enemy.x - g.minions[index].x)
+		if current < distance {
+			best, distance = enemyIndex, current
+		}
+	}
+	return best
+}
+
+func (g *Game) closestAllyMinion(index int) int {
+	best, distance := -1, math.MaxFloat64
+	for allyIndex, ally := range g.minions {
+		if !ally.active {
+			continue
+		}
+		current := math.Abs(ally.x - g.enemyMinions[index].x)
+		if current < distance {
+			best, distance = allyIndex, current
+		}
+	}
+	return best
 }
 
 func drawTower(screen *ebiten.Image, x, y float64, body, core color.Color, label string, health int) {
