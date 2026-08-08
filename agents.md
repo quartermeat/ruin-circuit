@@ -7,3 +7,5 @@ Keep implementation decisions consistent with the README. Update the README when
 Every commit must update `README.md` as a merged source of truth: preserve what is already documented, incorporate decisions made in the conversation, and keep the remaining planned work clearly represented.
 
 Use the project versioning rules: an architectural refactor increments the first number (`vX.0.0`), a meaningful feature increments the second number (`vX.x.0`), and every build, fix, or tuning pass increments the third number (`vX.x.x`). The first number is not reserved for release readiness. Every push must be tagged with the matching version.
+
+Track the token and context cost of each change. When a change is becoming unusually expensive to reason about or implement because of code size, duplication, or coupling, flag that cost and suggest a targeted refactor before continuing with more feature work.

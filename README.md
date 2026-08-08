@@ -83,6 +83,10 @@ Versions follow the project change rule:
 
 Every push is tagged with the matching version number.
 
+## Change-cost guidance
+
+Track token and context cost per change. When implementation cost starts rising because of code size, duplication, or coupling, suggest a targeted refactor before layering on more features.
+
 ## Run the WASM prototype
 
 Build and serve the browser version with one command:
