@@ -137,7 +137,7 @@ The enemy hero now responds to threat: once a player attack hits it, the hero ab
 
 Hero spawn points are alliance-based: the blue player starts and respawns near the blue tower, while the red AI hero starts and respawns near the red tower. Esc uses those same alliance spawn points.
 
-Reaching the lane portal physically sends the player into an escape dungeon and sends the enemy hero into its own mirrored instance. Dungeon creeps only pursue their local hero. The lane, towers, waves, and both dungeon instances continue updating in the background; reaching the dungeon exit returns that hero to the lane at its portal-side entry point.
+Reaching the lane portal physically sends the player into an escape dungeon and sends the enemy hero into its own mirrored instance. Dungeon creeps only pursue their local hero. The lane, towers, waves, and both dungeon instances continue updating in the background; reaching the dungeon exit returns that hero to its alliance tower spawn point.
 
 `Esc` now resets the entire run: towers, waves, heroes, enemies, build choices, and dungeon state all return to the initial paused workbench screen.
 

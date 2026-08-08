@@ -19,7 +19,7 @@ const (
 	gridWidth      = 28
 	gridHeight     = 14
 	tileSize       = 32
-	version        = "v0.16.0"
+	version        = "v0.16.1"
 	maxHealth      = 10
 	maxTowerHP     = 20
 	towerRange     = 180.0
@@ -583,8 +583,8 @@ func (g *Game) updateDungeon() {
 	}
 	if g.dungeonX >= dungeonExitX-20 {
 		g.inDungeon = false
-		g.playerX, g.playerY = g.portals[0].x, g.portals[0].y
-		g.message = "Dungeon exit reached. Returned to the lane portal."
+		g.playerX, g.playerY = blueHeroSpawnX, laneY
+		g.message = "Dungeon exit reached. Returned to the blue tower."
 	}
 }
 
