@@ -18,7 +18,7 @@ const (
 	gridWidth    = 28
 	gridHeight   = 14
 	tileSize     = 32
-	version      = "v0.2.1"
+	version      = "v0.3.0"
 )
 
 var ruinWalls = [][4]float64{{90, 90, 180, 18}, {90, 90, 18, 115}, {680, 80, 190, 18}, {850, 80, 18, 130}, {330, 420, 260, 18}, {330, 350, 18, 88}}
@@ -28,6 +28,7 @@ type Cell struct{ x, y int }
 type Enemy struct {
 	x, y   float64
 	name   string
+	health int
 	active bool
 }
 
@@ -40,6 +41,8 @@ type Game struct {
 	enemies          []Enemy
 	showBuild        bool
 	autoAttackPicked bool
+	attackTarget     int
+	attackCooldown   int
 	message          string
 }
 
@@ -48,11 +51,12 @@ func NewGame() *Game {
 		playerX: 496,
 		playerY: 288,
 		enemies: []Enemy{
-			{x: 220, y: 180, name: "scavenger drone", active: true},
-			{x: 740, y: 170, name: "scrap hound", active: true},
-			{x: 700, y: 390, name: "vault sentinel", active: true},
+			{x: 220, y: 180, name: "scavenger drone", health: 3, active: true},
+			{x: 740, y: 170, name: "scrap hound", health: 3, active: true},
+			{x: 700, y: 390, name: "vault sentinel", health: 3, active: true},
 		},
-		message: "Right-click to move. Open the workbench and choose the path.",
+		attackTarget: -1,
+		message:      "Right-click to move. Open the workbench and choose the path.",
 	}
 }
 
@@ -68,6 +72,24 @@ func (g *Game) Update() error {
 	}
 	if inpututil.IsMouseButtonJustPressed(ebiten.MouseButtonRight) {
 		mouseX, mouseY := ebiten.CursorPosition()
+		if enemyIndex, ok := g.enemyAt(float64(mouseX), float64(mouseY)); ok {
+			if !g.autoAttackPicked {
+				g.message = "Choose the path before engaging enemies."
+				return nil
+			}
+			g.attackTarget = enemyIndex
+			g.targetX, g.targetY = g.enemies[enemyIndex].x, g.enemies[enemyIndex].y
+			target := worldToCellOrDefault(g.targetX, g.targetY)
+			if isBlocked(target) {
+				target = nearestWalkableCell(target)
+			}
+			g.path = findPath(worldToCellOrDefault(g.playerX, g.playerY), target)
+			g.pathIndex = 1
+			g.hasTarget = len(g.path) > 1
+			g.message = fmt.Sprintf("Targeting %s — auto-attack engaged", g.enemies[enemyIndex].name)
+			return nil
+		}
+		g.attackTarget = -1
 		g.targetX, g.targetY = float64(mouseX), float64(mouseY)
 		if target, ok := worldToCell(g.targetX, g.targetY); ok {
 			if isBlocked(target) {
@@ -101,6 +123,10 @@ func (g *Game) Update() error {
 				g.playerY += dy / distance * math.Min(step, distance)
 			}
 		}
+	}
+	g.updateAutoAttack()
+	if g.attackCooldown > 0 {
+		g.attackCooldown--
 	}
 	if inpututil.IsKeyJustPressed(ebiten.KeyTab) {
 		g.showBuild = !g.showBuild
@@ -138,6 +164,8 @@ func (g *Game) Draw(screen *ebiten.Image) {
 		}
 		ebitenutil.DrawRect(screen, enemy.x-10, enemy.y-8, 20, 16, color.RGBA{145, 58, 65, 255})
 		ebitenutil.DrawRect(screen, enemy.x-4, enemy.y-13, 8, 5, color.RGBA{227, 153, 74, 255})
+		ebitenutil.DrawRect(screen, enemy.x-14, enemy.y-22, 28, 3, color.RGBA{34, 20, 25, 255})
+		ebitenutil.DrawRect(screen, enemy.x-14, enemy.y-22, float64(enemy.health)*9.3, 3, color.RGBA{220, 80, 85, 255})
 	}
 	if g.hasTarget {
 		ebitenutil.DrawRect(screen, g.targetX-5, g.targetY-1, 10, 2, color.RGBA{110, 219, 222, 220})
@@ -151,6 +179,11 @@ func (g *Game) Draw(screen *ebiten.Image) {
 	text.Draw(screen, "RUIN CIRCUIT // COMBAT CHASSIS ONLINE", basicfont.Face7x13, 32, 26, color.RGBA{190, 224, 224, 255})
 	text.Draw(screen, version, basicfont.Face7x13, 880, 26, color.RGBA{150, 190, 195, 255})
 	text.Draw(screen, "RIGHT-CLICK MOVE", basicfont.Face7x13, 760, 26, color.RGBA{150, 180, 190, 255})
+	attackStatus := "AUTO-ATTACK: CHOOSE PATH"
+	if g.autoAttackPicked {
+		attackStatus = "AUTO-ATTACK: ONLINE"
+	}
+	text.Draw(screen, attackStatus, basicfont.Face7x13, 32, 445, color.RGBA{190, 224, 224, 255})
 	text.Draw(screen, g.message, basicfont.Face7x13, 32, 520, color.RGBA{220, 200, 150, 255})
 	for i, skill := range []string{"Q  COMPONENT", "W  COMPONENT", "E  COMPONENT", "R  COMPONENT"} {
 		x := 32 + i*142
@@ -181,8 +214,40 @@ func (g *Game) Draw(screen *ebiten.Image) {
 
 func (g *Game) respec() {
 	g.autoAttackPicked = false
+	g.attackTarget = -1
+	g.hasTarget = false
 	g.showBuild = true
 	g.message = "Build reset. Choose the path when you are ready."
+}
+
+func (g *Game) enemyAt(x, y float64) (int, bool) {
+	for index, enemy := range g.enemies {
+		if enemy.active && math.Hypot(enemy.x-x, enemy.y-y) <= 26 {
+			return index, true
+		}
+	}
+	return -1, false
+}
+
+func (g *Game) updateAutoAttack() {
+	if g.attackTarget < 0 || g.attackTarget >= len(g.enemies) || !g.enemies[g.attackTarget].active {
+		g.attackTarget = -1
+		return
+	}
+	enemy := &g.enemies[g.attackTarget]
+	if math.Hypot(enemy.x-g.playerX, enemy.y-g.playerY) > 58 || g.attackCooldown > 0 {
+		return
+	}
+	enemy.health--
+	g.attackCooldown = 30
+	if enemy.health <= 0 {
+		enemy.active = false
+		g.attackTarget = -1
+		g.hasTarget = false
+		g.message = fmt.Sprintf("%s destroyed. Choose another target.", enemy.name)
+		return
+	}
+	g.message = fmt.Sprintf("Auto-attack hit %s (%d health)", enemy.name, enemy.health)
 }
 
 func pointInRect(x, y, left, top, width, height int) bool {
