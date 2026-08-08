@@ -18,7 +18,7 @@ const (
 	gridWidth    = 28
 	gridHeight   = 14
 	tileSize     = 32
-	version      = "v0.7.0"
+	version      = "v0.8.0"
 	maxHealth    = 10
 )
 
@@ -339,6 +339,10 @@ func (g *Game) updateEnemyAttacks() {
 		if g.attackTarget == index || distance <= 135 {
 			enemy.threat = true
 		}
+		if enemy.threat && distance > 58 {
+			g.moveEnemyTowardPlayer(enemy)
+			distance = math.Hypot(enemy.x-g.playerX, enemy.y-g.playerY)
+		}
 		if !enemy.threat || distance > 58 || enemy.attackCD > 0 {
 			continue
 		}
@@ -357,6 +361,24 @@ func (g *Game) updateEnemyAttacks() {
 	}
 }
 
+func (g *Game) moveEnemyTowardPlayer(enemy *Enemy) {
+	dx, dy := g.playerX-enemy.x, g.playerY-enemy.y
+	distance := math.Hypot(dx, dy)
+	if distance == 0 {
+		return
+	}
+	step := math.Min(1.25, distance-58)
+	if step <= 0 {
+		return
+	}
+	if canOccupy(enemy.x+dx/distance*step, enemy.y, 20, 16) {
+		enemy.x += dx / distance * step
+	}
+	if canOccupy(enemy.x, enemy.y+dy/distance*step, 20, 16) {
+		enemy.y += dy / distance * step
+	}
+}
+
 func (g *Game) drawEnemyAttackAnimations(screen *ebiten.Image) {
 	for _, enemy := range g.enemies {
 		if enemy.attackAnim <= 0 {
@@ -372,6 +394,22 @@ func (g *Game) drawEnemyAttackAnimations(screen *ebiten.Image) {
 
 func pointInRect(x, y, left, top, width, height int) bool {
 	return x >= left && x < left+width && y >= top && y < top+height
+}
+
+func canOccupy(centerX, centerY float64, width, height float64) bool {
+	left, top := centerX-width/2, centerY-height/2
+	right, bottom := centerX+width/2, centerY+height/2
+	if left < 32 || top < 48 || right > 928 || bottom > 496 {
+		return false
+	}
+	for _, wall := range ruinWalls {
+		wallLeft, wallTop := wall[0]-2, wall[1]-2
+		wallRight, wallBottom := wall[0]+wall[2]+2, wall[1]+wall[3]+2
+		if left < wallRight && right > wallLeft && top < wallBottom && bottom > wallTop {
+			return false
+		}
+	}
+	return true
 }
 
 func worldToCell(x, y float64) (Cell, bool) {

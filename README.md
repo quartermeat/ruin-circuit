@@ -108,3 +108,5 @@ The build model uses attributes as damage multipliers. The selected auto-attack 
 Auto-attacks now have readable combat animation: ranged attacks launch a traveling energy bolt, while close-range attacks show a directional melee slash.
 
 Enemy attacks are animated as red energy strikes traveling from a threatened enemy to the chassis, making incoming damage readable alongside the HP change.
+
+Threat now creates pursuit: threatened enemies move toward the chassis while respecting ruin-wall collision, then attack once they close to range. This makes target selection and proximity create an actual combat commitment.
