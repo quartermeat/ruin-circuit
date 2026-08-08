@@ -92,3 +92,5 @@ Build and serve the browser version with one command:
 ```
 
 Open `http://127.0.0.1:8080/`. Use `-Address "127.0.0.1:8090"` if the default port is occupied.
+
+The launcher cache-busts the WASM URL from the version in `main.go`, and the same version is visible in the game HUD.
