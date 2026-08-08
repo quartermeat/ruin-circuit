@@ -18,7 +18,7 @@ const (
 	gridWidth    = 28
 	gridHeight   = 14
 	tileSize     = 32
-	version      = "v0.1.2"
+	version      = "v0.2.0"
 )
 
 var ruinWalls = [][4]float64{{90, 90, 180, 18}, {90, 90, 18, 115}, {680, 80, 190, 18}, {850, 80, 18, 130}, {330, 420, 260, 18}, {330, 350, 18, 88}}
@@ -39,6 +39,7 @@ type Game struct {
 	pathIndex        int
 	enemies          []Enemy
 	showBuild        bool
+	autoAttackPicked bool
 	message          string
 }
 
@@ -51,11 +52,20 @@ func NewGame() *Game {
 			{x: 740, y: 170, name: "scrap hound", active: true},
 			{x: 700, y: 390, name: "vault sentinel", active: true},
 		},
-		message: "Right-click to move. Q/W/E/R are waiting for their first components.",
+		message: "Right-click to move. Open the workbench and choose the path.",
 	}
 }
 
 func (g *Game) Update() error {
+	if inpututil.IsMouseButtonJustPressed(ebiten.MouseButtonLeft) {
+		mouseX, mouseY := ebiten.CursorPosition()
+		if pointInRect(mouseX, mouseY, 760, 465, 168, 34) {
+			g.respec()
+		} else if g.showBuild && pointInRect(mouseX, mouseY, 270, 245, 220, 34) {
+			g.autoAttackPicked = true
+			g.message = "Path chosen: auto-attack chassis online. Experiment freely."
+		}
+	}
 	if inpututil.IsMouseButtonJustPressed(ebiten.MouseButtonRight) {
 		mouseX, mouseY := ebiten.CursorPosition()
 		g.targetX, g.targetY = float64(mouseX), float64(mouseY)
@@ -147,14 +157,35 @@ func (g *Game) Draw(screen *ebiten.Image) {
 		ebitenutil.DrawRect(screen, float64(x), 465, 132, 34, color.RGBA{18, 28, 39, 245})
 		text.Draw(screen, skill, basicfont.Face7x13, x+9, 486, color.RGBA{125, 221, 225, 255})
 	}
+	ebitenutil.DrawRect(screen, 760, 465, 168, 34, color.RGBA{56, 35, 46, 245})
+	text.Draw(screen, "RESPEC  [ALWAYS]", basicfont.Face7x13, 772, 486, color.RGBA{245, 170, 180, 255})
 	if g.showBuild {
 		ebitenutil.DrawRect(screen, 220, 72, 520, 300, color.RGBA{8, 14, 24, 242})
 		text.Draw(screen, "BUILD WORKBENCH", basicfont.Face7x13, 400, 105, color.RGBA{240, 216, 150, 255})
 		text.Draw(screen, "Five component sockets will define every ability:", basicfont.Face7x13, 270, 145, color.White)
 		text.Draw(screen, "TRIGGER   TARGETING   EFFECT   MODIFIER   SCALING", basicfont.Face7x13, 270, 180, color.RGBA{125, 221, 225, 255})
-		text.Draw(screen, "Tech currency and dungeon materials will fill this panel.", basicfont.Face7x13, 270, 220, color.RGBA{190, 200, 210, 255})
+		if g.autoAttackPicked {
+			text.Draw(screen, "PATH: AUTO-ATTACK CHASSIS", basicfont.Face7x13, 270, 220, color.RGBA{150, 230, 175, 255})
+		} else {
+			text.Draw(screen, "PATH: CHOOSE THE PATH", basicfont.Face7x13, 270, 220, color.RGBA{245, 190, 125, 255})
+		}
+		ebitenutil.DrawRect(screen, 270, 245, 220, 34, color.RGBA{24, 62, 68, 255})
+		if g.autoAttackPicked {
+			text.Draw(screen, "AUTO-ATTACK SELECTED", basicfont.Face7x13, 282, 266, color.RGBA{150, 230, 175, 255})
+		} else {
+			text.Draw(screen, "CHOOSE THE PATH", basicfont.Face7x13, 302, 266, color.RGBA{240, 220, 150, 255})
+		}
 		text.Draw(screen, "TAB to close", basicfont.Face7x13, 430, 330, color.RGBA{240, 216, 150, 255})
 	}
+}
+
+func (g *Game) respec() {
+	g.autoAttackPicked = false
+	g.message = "Build reset. Choose the path when you are ready."
+}
+
+func pointInRect(x, y, left, top, width, height int) bool {
+	return x >= left && x < left+width && y >= top && y < top+height
 }
 
 func worldToCell(x, y float64) (Cell, bool) {
