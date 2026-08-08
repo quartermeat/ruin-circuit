@@ -115,13 +115,13 @@ For playtesting, RESPEC also respawns the three starter enemies at their origina
 
 When the workbench is closed, `Tab` has the same behavior as clicking RESPEC: it resets the build, respawns the starter enemies, and opens the workbench. When the workbench is open, `Tab` closes it without resetting, so the menu always has an exit.
 
-The prototype setting is now a first MOBA-style lane instead of a dungeon. An allied tower and enemy tower frame the lane, allied combat drones automatically respawn at our tower and push toward the enemy tower, and the HUD tracks the active wave and enemy-tower health. The existing hostile units remain as defenders for the player to engage.
+The prototype setting is now a first MOBA-style lane instead of a dungeon. An allied tower and enemy tower frame the lane, allied combat drones automatically respawn at our tower and push toward the enemy tower, and the HUD tracks the active wave and enemy-tower health.
 
 The lane now has a single-lane MOBA baseline: allied and enemy waves spawn in matching numbers on the same timer and fight to a natural stalemate. Towers now attack nearby opposing creeps with matching range, damage, and cooldown. The enemy AI hero pushes left toward the blue tower and can break the stalemate by damaging it. Creep attack cooldowns are symmetric during contact, so neither side wins without a hero. The purple lane portal sits off the creep lane and opens a pop-up dungeon instance overlay; `Esc` returns to the lane. The portal loop is intentionally a shell for the next dungeon-combat implementation.
 
 New runs begin paused with the RESPEC/workbench screen open, requiring an auto-attack path before the lane can start. RESPEC pauses the lane whenever it is opened, and all hostile defenders now spawn in the lane rather than in off-lane positions.
 
-The enemy hero is targetable like a creep: right-click it after choosing an auto-attack, and the chassis will path into range and attack it using the selected melee or ranged behavior. When the player chooses a path, the enemy hero also randomly chooses from those same available paths; its current choice is shown beside it and resets with RESPEC.
+The enemy hero is targetable like a creep: right-click it after choosing an auto-attack, and the chassis will path into range and attack it using the selected melee or ranged behavior. When the player chooses a path, the enemy hero also randomly chooses from those same available paths; its current choice is shown beside it and resets with RESPEC. The lane now contains only the mirrored creep waves and the enemy hero; the legacy named defender units have been removed.
 
 `Esc` now resets the entire run: towers, waves, heroes, enemies, build choices, and dungeon state all return to the initial paused workbench screen.
 

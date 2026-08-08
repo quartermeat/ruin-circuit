@@ -19,7 +19,7 @@ const (
 	gridWidth    = 28
 	gridHeight   = 14
 	tileSize     = 32
-	version      = "v0.12.4"
+	version      = "v0.13.0"
 	maxHealth    = 10
 	maxTowerHP   = 20
 	towerRange   = 180.0
@@ -99,11 +99,7 @@ func NewGame() *Game {
 	return &Game{
 		playerX: 496,
 		playerY: 288,
-		enemies: []Enemy{
-			{x: 740, y: 270, name: "scavenger drone", health: 3, active: true},
-			{x: 760, y: 288, name: "scrap hound", health: 3, active: true},
-			{x: 780, y: 306, name: "vault sentinel", health: 3, active: true},
-		},
+		enemies: []Enemy{},
 		minions: []Minion{
 			{x: 150, y: 270, health: 2, active: true},
 			{x: 150, y: 288, health: 2, active: true},
@@ -396,16 +392,7 @@ func (g *Game) chooseAIHeroPath() {
 }
 
 func (g *Game) resetEnemies() {
-	spawnPoints := [][2]float64{{740, 270}, {760, 288}, {780, 306}}
-	for index := range g.enemies {
-		enemy := &g.enemies[index]
-		enemy.x, enemy.y = spawnPoints[index][0], spawnPoints[index][1]
-		enemy.health = 3
-		enemy.threat = false
-		enemy.attackCD = 0
-		enemy.attackAnim = 0
-		enemy.active = true
-	}
+	g.enemies = []Enemy{}
 	g.enemyTowerHealth = maxTowerHP
 	g.playerTowerHealth = maxTowerHP
 	g.minions = []Minion{
