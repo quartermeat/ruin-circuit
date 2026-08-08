@@ -19,7 +19,7 @@ const (
 	gridWidth      = 28
 	gridHeight     = 14
 	tileSize       = 32
-	version        = "v0.14.1"
+	version        = "v0.14.2"
 	maxHealth      = 10
 	maxTowerHP     = 20
 	towerRange     = 180.0
@@ -317,6 +317,7 @@ func (g *Game) Draw(screen *ebiten.Image) {
 			aiHeroLabel = "ENEMY HERO // RANGED"
 		}
 		text.Draw(screen, aiHeroLabel, basicfont.Face7x13, int(g.aiHero.x)-48, int(g.aiHero.y)-22, color.RGBA{245, 140, 145, 255})
+		drawHealthBar(screen, g.aiHero.x, g.aiHero.y-28, g.aiHero.health, maxHealth, color.RGBA{235, 95, 105, 255})
 	}
 	for _, minion := range g.minions {
 		if !minion.active {
@@ -324,6 +325,7 @@ func (g *Game) Draw(screen *ebiten.Image) {
 		}
 		ebitenutil.DrawRect(screen, minion.x-8, minion.y-8, 16, 16, color.RGBA{86, 178, 205, 255})
 		ebitenutil.DrawRect(screen, minion.x-5, minion.y-12, 10, 3, color.RGBA{180, 235, 230, 255})
+		drawHealthBar(screen, minion.x, minion.y-17, minion.health, 2, color.RGBA{90, 205, 225, 255})
 	}
 	for _, minion := range g.enemyMinions {
 		if !minion.active {
@@ -331,6 +333,7 @@ func (g *Game) Draw(screen *ebiten.Image) {
 		}
 		ebitenutil.DrawRect(screen, minion.x-8, minion.y-8, 16, 16, color.RGBA{190, 75, 85, 255})
 		ebitenutil.DrawRect(screen, minion.x-5, minion.y-12, 10, 3, color.RGBA{250, 170, 135, 255})
+		drawHealthBar(screen, minion.x, minion.y-17, minion.health, 2, color.RGBA{235, 95, 105, 255})
 	}
 	for _, enemy := range g.enemies {
 		if !enemy.active {
@@ -355,6 +358,7 @@ func (g *Game) Draw(screen *ebiten.Image) {
 		ebitenutil.DrawRect(screen, g.playerX-5, g.playerY-17, 10, 7, color.RGBA{191, 235, 220, 255})
 		ebitenutil.DrawRect(screen, g.playerX+9, g.playerY-3, 13, 5, color.RGBA{231, 177, 86, 255})
 		g.drawAttackAnimation(screen)
+		drawHealthBar(screen, g.playerX, g.playerY-23, g.playerHealth, maxHealth, color.RGBA{90, 205, 225, 255})
 	}
 
 	text.Draw(screen, "RUIN CIRCUIT // COMBAT CHASSIS ONLINE", basicfont.Face7x13, 32, 26, color.RGBA{190, 224, 224, 255})
@@ -740,6 +744,21 @@ func drawTower(screen *ebiten.Image, x, y float64, body, core color.Color, label
 		ebitenutil.DrawRect(screen, x-32, y-57, float64(health)*3.2, 5, core)
 	}
 	text.Draw(screen, label, basicfont.Face7x13, int(x)-35, int(y)+62, body)
+}
+
+func drawHealthBar(screen *ebiten.Image, x, y float64, health, maximum int, fill color.Color) {
+	if maximum <= 0 {
+		return
+	}
+	if health < 0 {
+		health = 0
+	}
+	if health > maximum {
+		health = maximum
+	}
+	const width = 24.0
+	ebitenutil.DrawRect(screen, x-width/2, y, width, 3, color.RGBA{25, 18, 26, 240})
+	ebitenutil.DrawRect(screen, x-width/2, y, width*float64(health)/float64(maximum), 3, fill)
 }
 
 func (g *Game) enemyAt(x, y float64) (int, bool) {
