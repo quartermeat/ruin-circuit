@@ -18,7 +18,7 @@ const (
 	gridWidth    = 28
 	gridHeight   = 14
 	tileSize     = 32
-	version      = "v0.8.1"
+	version      = "v0.8.2"
 	maxHealth    = 10
 )
 
@@ -153,7 +153,7 @@ func (g *Game) Update() error {
 		g.attackAnimation--
 	}
 	if inpututil.IsKeyJustPressed(ebiten.KeyTab) {
-		g.showBuild = !g.showBuild
+		g.respec()
 	}
 	for key, label := range map[ebiten.Key]string{
 		ebiten.KeyQ: "Q: primary ability slot",

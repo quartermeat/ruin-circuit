@@ -112,3 +112,5 @@ Enemy attacks are animated as red energy strikes traveling from a threatened ene
 Threat now creates pursuit: threatened enemies move toward the chassis while respecting ruin-wall collision, then attack once they close to range. This makes target selection and proximity create an actual combat commitment.
 
 For playtesting, RESPEC also respawns the three starter enemies at their original positions with full health and cleared threat state, allowing repeated build experiments without refreshing the page.
+
+The `Tab` key has the exact same behavior as clicking RESPEC: it resets the build, respawns the starter enemies, and opens the workbench.
