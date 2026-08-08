@@ -156,3 +156,5 @@ Click-to-move pathfinding now uses a 16-pixel navigation grid across the same wo
 Heroes recover one health every 30 frames while within 120 pixels of their living allied tower. This applies to the player at the blue tower and the AI hero at the red tower, and pauses while either hero is inside a dungeon.
 
 Respawn timers now use both match duration and individual hero deaths: the match-time delay still grows over time, and each hero adds one extra second per death, capped at ten extra seconds. Each hero's death count resets only when the run is restarted with `Esc`.
+
+The codebase now isolates navigation in `pathfinding.go` and shared combat timing rules in `combat_rules.go`. These boundaries are covered by focused Go tests so movement-grid and respawn changes can evolve without relying only on browser playtesting.
