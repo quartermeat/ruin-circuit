@@ -19,7 +19,7 @@ const (
 	gridWidth      = 28
 	gridHeight     = 14
 	tileSize       = 32
-	version        = "v0.14.0"
+	version        = "v0.14.1"
 	maxHealth      = 10
 	maxTowerHP     = 20
 	towerRange     = 180.0
@@ -480,6 +480,17 @@ func (g *Game) updateAIHero() {
 	if g.aiHero.attackCD > 0 {
 		g.aiHero.attackCD--
 	}
+	creepIndex, creepDistance := g.closestActiveAllyMinionToHero()
+	if creepIndex >= 0 && creepDistance <= creepHeroRange {
+		if g.aiHero.attackCD == 0 {
+			g.aiHero.attackCD = 30
+			g.minions[creepIndex].health--
+			if g.minions[creepIndex].health <= 0 {
+				g.minions[creepIndex].active = false
+			}
+		}
+		return
+	}
 	if g.aiHero.x > 150 {
 		g.aiHero.x -= 0.55
 		return
@@ -530,10 +541,14 @@ func (g *Game) damagePlayerFromCreep() {
 func (g *Game) updateMinionWave() {
 	if g.minionSpawnTimer > 0 {
 		g.minionSpawnTimer--
-	} else if g.activeMinions() < 6 && g.activeEnemyMinions() < 6 {
+	} else if g.activeMinions() < 6 || g.activeEnemyMinions() < 6 {
 		spawnY := 270 + float64((g.activeMinions()%3)*18)
-		g.minions = append(g.minions, Minion{x: 150, y: spawnY, health: 2, active: true})
-		g.enemyMinions = append(g.enemyMinions, Minion{x: 810, y: spawnY, health: 2, active: true})
+		if g.activeMinions() < 6 {
+			g.minions = append(g.minions, Minion{x: 150, y: spawnY, health: 2, active: true})
+		}
+		if g.activeEnemyMinions() < 6 {
+			g.enemyMinions = append(g.enemyMinions, Minion{x: 810, y: spawnY, health: 2, active: true})
+		}
 		g.minionSpawnTimer = 240
 	}
 	for index := range g.minions {
@@ -673,6 +688,20 @@ func (g *Game) activeEnemyMinions() int {
 		}
 	}
 	return count
+}
+
+func (g *Game) closestActiveAllyMinionToHero() (int, float64) {
+	best, distance := -1, math.MaxFloat64
+	for index, minion := range g.minions {
+		if !minion.active {
+			continue
+		}
+		current := math.Hypot(minion.x-g.aiHero.x, minion.y-g.aiHero.y)
+		if current < distance {
+			best, distance = index, current
+		}
+	}
+	return best, distance
 }
 
 func (g *Game) closestEnemyMinion(index int) int {

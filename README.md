@@ -129,6 +129,8 @@ The player now uses that exact same respawn rule: defeat starts the same match-t
 
 Creeps now prioritize heroes inside a 100-pixel combat radius over opposing creeps. Enemy creep targeting also matches hero targeting: right-click a red creep to follow it, stop at attack range, and keep attacking until another movement command cancels the order.
 
+The enemy hero now prioritizes nearby blue creeps before attacking the blue tower. Creep waves can refill a missing side up to six active units, allowing hero pressure to create an advantage without permanently stopping lane spawns.
+
 `Esc` now resets the entire run: towers, waves, heroes, enemies, build choices, and dungeon state all return to the initial paused workbench screen.
 
 Right-clicking an enemy now creates a persistent attack order: the chassis follows the moving target, stops at the selected attack range, and continues auto-attacking. Right-clicking open ground cancels the attack order and returns to movement.
