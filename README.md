@@ -123,6 +123,10 @@ New runs begin paused with the RESPEC/workbench screen open, requiring an auto-a
 
 The enemy hero is targetable like a creep: right-click it after choosing an auto-attack, and the chassis will path into range and attack it using the selected melee or ranged behavior. When the player chooses a path, the enemy hero also randomly chooses from those same available paths; its current choice is shown beside it and resets with RESPEC. The lane now contains only the mirrored creep waves and the enemy hero; the legacy named defender units have been removed.
 
+The enemy hero now respawns automatically after defeat. The timer starts at five seconds and increases by one second per thirty seconds of match time, up to thirty seconds, with the remaining time shown in the HUD. RESPEC/Esc still resets the whole match timer.
+
+The player now uses that exact same respawn rule: defeat starts the same match-time-scaled timer, the chassis disappears during the timer, and it returns at the blue-side start position with full health. Both timers reset through RESPEC/Esc.
+
 `Esc` now resets the entire run: towers, waves, heroes, enemies, build choices, and dungeon state all return to the initial paused workbench screen.
 
 Right-clicking an enemy now creates a persistent attack order: the chassis follows the moving target, stops at the selected attack range, and continues auto-attacking. Right-clicking open ground cancels the attack order and returns to movement.

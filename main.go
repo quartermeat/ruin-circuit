@@ -19,7 +19,7 @@ const (
 	gridWidth    = 28
 	gridHeight   = 14
 	tileSize     = 32
-	version      = "v0.13.0"
+	version      = "v0.13.2"
 	maxHealth    = 10
 	maxTowerHP   = 20
 	towerRange   = 180.0
@@ -77,6 +77,8 @@ type Game struct {
 	playerTowerAttackCD int
 	enemyTowerAttackCD  int
 	aiHero              AIHero
+	matchFrames         int
+	aiHeroRespawnTimer  int
 	portals             []Portal
 	inDungeon           bool
 	showBuild           bool
@@ -92,6 +94,8 @@ type Game struct {
 	attackEndY          float64
 	attackVisualRanged  bool
 	playerHealth        int
+	playerActive        bool
+	playerRespawnTimer  int
 	message             string
 }
 
@@ -117,6 +121,7 @@ func NewGame() *Game {
 		portals:           []Portal{{x: 470, y: 400, name: "SUNKEN ARCHIVE"}},
 		attackTarget:      -1,
 		playerHealth:      maxHealth,
+		playerActive:      true,
 		showBuild:         true,
 		message:           "Right-click to move. Open the workbench and choose the path.",
 	}
@@ -156,6 +161,14 @@ func (g *Game) Update() error {
 		return nil
 	}
 	if g.showBuild {
+		return nil
+	}
+	if !g.playerActive {
+		g.updateMinionWave()
+		g.updateTowerAttacks()
+		g.updateAIHero()
+		g.updatePlayerRespawn()
+		g.matchFrames++
 		return nil
 	}
 	if inpututil.IsMouseButtonJustPressed(ebiten.MouseButtonRight) {
@@ -241,6 +254,7 @@ func (g *Game) Update() error {
 	g.updateMinionWave()
 	g.updateTowerAttacks()
 	g.updateAIHero()
+	g.matchFrames++
 	if g.attackCooldown > 0 {
 		g.attackCooldown--
 	}
@@ -320,10 +334,12 @@ func (g *Game) Draw(screen *ebiten.Image) {
 		ebitenutil.DrawRect(screen, g.targetX-1, g.targetY-5, 2, 10, color.RGBA{110, 219, 222, 220})
 	}
 	// Player combat chassis.
-	ebitenutil.DrawRect(screen, g.playerX-11, g.playerY-11, 22, 22, color.RGBA{92, 196, 207, 255})
-	ebitenutil.DrawRect(screen, g.playerX-5, g.playerY-17, 10, 7, color.RGBA{191, 235, 220, 255})
-	ebitenutil.DrawRect(screen, g.playerX+9, g.playerY-3, 13, 5, color.RGBA{231, 177, 86, 255})
-	g.drawAttackAnimation(screen)
+	if g.playerActive {
+		ebitenutil.DrawRect(screen, g.playerX-11, g.playerY-11, 22, 22, color.RGBA{92, 196, 207, 255})
+		ebitenutil.DrawRect(screen, g.playerX-5, g.playerY-17, 10, 7, color.RGBA{191, 235, 220, 255})
+		ebitenutil.DrawRect(screen, g.playerX+9, g.playerY-3, 13, 5, color.RGBA{231, 177, 86, 255})
+		g.drawAttackAnimation(screen)
+	}
 
 	text.Draw(screen, "RUIN CIRCUIT // COMBAT CHASSIS ONLINE", basicfont.Face7x13, 32, 26, color.RGBA{190, 224, 224, 255})
 	text.Draw(screen, version, basicfont.Face7x13, 880, 26, color.RGBA{150, 190, 195, 255})
@@ -338,6 +354,12 @@ func (g *Game) Draw(screen *ebiten.Image) {
 	text.Draw(screen, attackStatus, basicfont.Face7x13, 32, 445, color.RGBA{190, 224, 224, 255})
 	text.Draw(screen, fmt.Sprintf("CHASSIS HP: %02d/%02d", g.playerHealth, maxHealth), basicfont.Face7x13, 32, 460, color.RGBA{235, 150, 155, 255})
 	text.Draw(screen, fmt.Sprintf("WAVE: %d v %d   TOWERS: %02d/%02d - %02d/%02d", g.activeMinions(), g.activeEnemyMinions(), g.playerTowerHealth, maxTowerHP, g.enemyTowerHealth, maxTowerHP), basicfont.Face7x13, 300, 445, color.RGBA{190, 224, 224, 255})
+	if !g.aiHero.active {
+		text.Draw(screen, fmt.Sprintf("ENEMY HERO RESPAWN: %ds", int(math.Ceil(float64(g.aiHeroRespawnTimer)/60))), basicfont.Face7x13, 610, 460, color.RGBA{245, 140, 145, 255})
+	}
+	if !g.playerActive {
+		text.Draw(screen, fmt.Sprintf("PLAYER RESPAWN: %ds", int(math.Ceil(float64(g.playerRespawnTimer)/60))), basicfont.Face7x13, 610, 445, color.RGBA{125, 221, 225, 255})
+	}
 	text.Draw(screen, g.message, basicfont.Face7x13, 32, 520, color.RGBA{220, 200, 150, 255})
 	for i, skill := range []string{"Q  COMPONENT", "W  COMPONENT", "E  COMPONENT", "R  COMPONENT"} {
 		x := 32 + i*142
@@ -409,6 +431,12 @@ func (g *Game) resetEnemies() {
 	g.playerTowerAttackCD = 0
 	g.enemyTowerAttackCD = 0
 	g.aiHero = AIHero{x: 720, y: 288, health: 10, active: true}
+	g.matchFrames = 0
+	g.aiHeroRespawnTimer = 0
+	g.playerX, g.playerY = 496, 288
+	g.playerHealth = maxHealth
+	g.playerActive = true
+	g.playerRespawnTimer = 0
 }
 
 func (g *Game) portalAt(x, y float64) (int, bool) {
@@ -422,6 +450,14 @@ func (g *Game) portalAt(x, y float64) (int, bool) {
 
 func (g *Game) updateAIHero() {
 	if !g.aiHero.active {
+		if g.aiHeroRespawnTimer > 0 {
+			g.aiHeroRespawnTimer--
+			return
+		}
+		g.aiHero.x, g.aiHero.y = 720, 288
+		g.aiHero.health = 10
+		g.aiHero.active = true
+		g.message = "Enemy hero respawned."
 		return
 	}
 	if g.aiHero.attackCD > 0 {
@@ -435,6 +471,17 @@ func (g *Game) updateAIHero() {
 		g.aiHero.attackCD = 45
 		g.playerTowerHealth--
 	}
+}
+
+func (g *Game) updatePlayerRespawn() {
+	if g.playerRespawnTimer > 0 {
+		g.playerRespawnTimer--
+		return
+	}
+	g.playerX, g.playerY = 496, 288
+	g.playerHealth = maxHealth
+	g.playerActive = true
+	g.message = "Player chassis respawned."
 }
 
 func (g *Game) updateMinionWave() {
@@ -645,6 +692,7 @@ func (g *Game) updateAutoAttack() {
 		g.attackVisualRanged = g.autoAttackRanged
 		if g.aiHero.health <= 0 {
 			g.aiHero.active = false
+			g.aiHeroRespawnTimer = g.enemyHeroRespawnDelay()
 			g.attackHero = false
 			g.hasTarget = false
 			g.message = "Enemy hero defeated."
@@ -680,6 +728,15 @@ func (g *Game) updateAutoAttack() {
 		return
 	}
 	g.message = fmt.Sprintf("Auto-attack hit %s (%d health)", enemy.name, enemy.health)
+}
+
+func (g *Game) enemyHeroRespawnDelay() int {
+	matchSeconds := g.matchFrames / 60
+	additionalSeconds := matchSeconds / 30
+	if additionalSeconds > 25 {
+		additionalSeconds = 25
+	}
+	return (5 + additionalSeconds) * 60
 }
 
 func (g *Game) selectedAttackRange() float64 {
@@ -767,11 +824,12 @@ func (g *Game) updateEnemyAttacks() {
 		g.playerHealth--
 		g.message = fmt.Sprintf("%s hit the chassis (%d/%d HP)", enemy.name, g.playerHealth, maxHealth)
 		if g.playerHealth <= 0 {
-			g.playerHealth = maxHealth
-			g.playerX, g.playerY = 496, 288
+			g.playerActive = false
+			g.playerRespawnTimer = g.enemyHeroRespawnDelay()
 			g.hasTarget = false
+			g.attackHero = false
 			g.attackTarget = -1
-			g.message = "Chassis disabled. Emergency reboot complete."
+			g.message = "Chassis destroyed. Respawn timer started."
 		}
 	}
 }
