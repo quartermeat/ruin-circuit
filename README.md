@@ -140,3 +140,5 @@ Hero spawn points are alliance-based: the blue player starts and respawns near t
 `Esc` now resets the entire run: towers, waves, heroes, enemies, build choices, and dungeon state all return to the initial paused workbench screen.
 
 Right-clicking an enemy now creates a persistent attack order: the chassis follows the moving target, stops at the selected attack range, and continues auto-attacking. Right-clicking open ground cancels the attack order and returns to movement.
+
+The enemy tower now uses the same targeting flow: right-click it after choosing a path, move into range, and auto-attack until it is destroyed or another movement command cancels the order.

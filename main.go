@@ -19,7 +19,7 @@ const (
 	gridWidth      = 28
 	gridHeight     = 14
 	tileSize       = 32
-	version        = "v0.14.5"
+	version        = "v0.15.0"
 	maxHealth      = 10
 	maxTowerHP     = 20
 	towerRange     = 180.0
@@ -92,6 +92,7 @@ type Game struct {
 	attackTarget        int
 	attackTargetIsCreep bool
 	attackHero          bool
+	attackTower         bool
 	attackCooldown      int
 	attackAnimation     int
 	attackStartX        float64
@@ -185,12 +186,26 @@ func (g *Game) Update() error {
 			g.message = fmt.Sprintf("Entering pop-up dungeon: %s", g.portals[portalIndex].name)
 			return nil
 		}
+		if g.enemyTowerAt(float64(mouseX), float64(mouseY)) {
+			if !g.autoAttackPicked {
+				g.message = "Choose the path before attacking the enemy tower."
+				return nil
+			}
+			g.attackHero = false
+			g.attackTargetIsCreep = false
+			g.attackTower = true
+			g.attackTarget = -1
+			g.targetX, g.targetY = 864, laneY
+			g.message = "Targeting enemy tower — auto-attack engaged"
+			return nil
+		}
 		if g.aiHeroAt(float64(mouseX), float64(mouseY)) {
 			if !g.autoAttackPicked {
 				g.message = "Choose the path before engaging enemies."
 				return nil
 			}
 			g.attackHero = true
+			g.attackTower = false
 			g.attackTarget = -1
 			g.targetX, g.targetY = g.aiHero.x, g.aiHero.y
 			target := worldToCellOrDefault(g.targetX, g.targetY)
@@ -206,6 +221,7 @@ func (g *Game) Update() error {
 				return nil
 			}
 			g.attackHero = false
+			g.attackTower = false
 			g.attackTargetIsCreep = true
 			g.attackTarget = creepIndex
 			g.targetX, g.targetY = g.enemyMinions[creepIndex].x, g.enemyMinions[creepIndex].y
@@ -232,6 +248,7 @@ func (g *Game) Update() error {
 			return nil
 		}
 		g.attackHero = false
+		g.attackTower = false
 		g.attackTargetIsCreep = false
 		g.attackTarget = -1
 		g.targetX, g.targetY = float64(mouseX), float64(mouseY)
@@ -428,6 +445,7 @@ func (g *Game) respec() {
 	g.autoAttackPicked = false
 	g.autoAttackRanged = false
 	g.attackHero = false
+	g.attackTower = false
 	g.attackTargetIsCreep = false
 	g.attackTarget = -1
 	g.hasTarget = false
@@ -563,6 +581,7 @@ func (g *Game) damagePlayerFromCreep() {
 	g.playerActive = false
 	g.playerRespawnTimer = g.enemyHeroRespawnDelay()
 	g.attackHero = false
+	g.attackTower = false
 	g.attackTarget = -1
 	g.attackTargetIsCreep = false
 	g.hasTarget = false
@@ -825,7 +844,41 @@ func (g *Game) enemyMinionAt(x, y float64) (int, bool) {
 	return -1, false
 }
 
+func (g *Game) enemyTowerAt(x, y float64) bool {
+	return math.Abs(x-864) <= 32 && math.Abs(y-laneY) <= 50 && g.enemyTowerHealth > 0
+}
+
 func (g *Game) updateAutoAttack() {
+	if g.attackTower {
+		if g.enemyTowerHealth <= 0 {
+			g.attackTower = false
+			g.hasTarget = false
+			return
+		}
+		attackRange := g.selectedAttackRange()
+		distance := math.Hypot(864-g.playerX, laneY-g.playerY)
+		if distance <= attackRange {
+			g.hasTarget = false
+		}
+		if distance > attackRange || g.attackCooldown > 0 {
+			return
+		}
+		g.enemyTowerHealth--
+		g.attackCooldown = 30
+		g.attackAnimation = 10
+		g.attackStartX, g.attackStartY = g.playerX, g.playerY
+		g.attackEndX, g.attackEndY = 864, laneY
+		g.attackVisualRanged = g.autoAttackRanged
+		if g.enemyTowerHealth <= 0 {
+			g.enemyTowerHealth = 0
+			g.attackTower = false
+			g.hasTarget = false
+			g.message = "Enemy tower destroyed. Lane victory achieved."
+			return
+		}
+		g.message = fmt.Sprintf("Auto-attack hit enemy tower (%d health)", g.enemyTowerHealth)
+		return
+	}
 	if g.attackHero {
 		if !g.aiHero.active {
 			g.attackHero = false
@@ -938,7 +991,10 @@ func (g *Game) selectedAttackRange() float64 {
 func (g *Game) refreshAttackPath() {
 	var targetX, targetY float64
 	var active bool
-	if g.attackHero && g.aiHero.active {
+	if g.attackTower && g.enemyTowerHealth > 0 {
+		targetX, targetY = 864, laneY
+		active = true
+	} else if g.attackHero && g.aiHero.active {
 		targetX, targetY = g.aiHero.x, g.aiHero.y
 		active = true
 	} else if g.attackTargetIsCreep && g.attackTarget >= 0 && g.attackTarget < len(g.enemyMinions) && g.enemyMinions[g.attackTarget].active {
