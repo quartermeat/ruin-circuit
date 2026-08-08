@@ -135,6 +135,8 @@ All active creeps and heroes now display floating health bars above their heads,
 
 The enemy hero now responds to threat: once a player attack hits it, the hero abandons tower pressure, pursues the player, and attacks at its own selected melee or ranged distance until that life ends. Respawning clears that threat state.
 
+Hero spawn points are alliance-based: the blue player starts and respawns near the blue tower, while the red AI hero starts and respawns near the red tower. RESPEC/Esc uses those same alliance spawn points.
+
 `Esc` now resets the entire run: towers, waves, heroes, enemies, build choices, and dungeon state all return to the initial paused workbench screen.
 
 Right-clicking an enemy now creates a persistent attack order: the chassis follows the moving target, stops at the selected attack range, and continues auto-attacking. Right-clicking open ground cancels the attack order and returns to movement.

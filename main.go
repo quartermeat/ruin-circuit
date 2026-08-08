@@ -19,11 +19,14 @@ const (
 	gridWidth      = 28
 	gridHeight     = 14
 	tileSize       = 32
-	version        = "v0.14.3"
+	version        = "v0.14.4"
 	maxHealth      = 10
 	maxTowerHP     = 20
 	towerRange     = 180.0
 	creepHeroRange = 100.0
+	laneY          = 288.0
+	blueHeroSpawnX = 150.0
+	redHeroSpawnX  = 810.0
 )
 
 var ruinWalls = [][4]float64{}
@@ -104,8 +107,8 @@ type Game struct {
 
 func NewGame() *Game {
 	return &Game{
-		playerX: 496,
-		playerY: 288,
+		playerX: blueHeroSpawnX,
+		playerY: laneY,
 		enemies: []Enemy{},
 		minions: []Minion{
 			{x: 150, y: 270, health: 2, active: true},
@@ -120,7 +123,7 @@ func NewGame() *Game {
 		minionSpawnTimer:  240,
 		playerTowerHealth: maxTowerHP,
 		enemyTowerHealth:  maxTowerHP,
-		aiHero:            AIHero{x: 720, y: 288, health: 10, active: true},
+		aiHero:            AIHero{x: redHeroSpawnX, y: laneY, health: 10, active: true},
 		portals:           []Portal{{x: 470, y: 400, name: "SUNKEN ARCHIVE"}},
 		attackTarget:      -1,
 		playerHealth:      maxHealth,
@@ -455,10 +458,10 @@ func (g *Game) resetEnemies() {
 	g.minionSpawnTimer = 240
 	g.playerTowerAttackCD = 0
 	g.enemyTowerAttackCD = 0
-	g.aiHero = AIHero{x: 720, y: 288, health: 10, active: true}
+	g.aiHero = AIHero{x: redHeroSpawnX, y: laneY, health: 10, active: true}
 	g.matchFrames = 0
 	g.aiHeroRespawnTimer = 0
-	g.playerX, g.playerY = 496, 288
+	g.playerX, g.playerY = blueHeroSpawnX, laneY
 	g.playerHealth = maxHealth
 	g.playerActive = true
 	g.playerRespawnTimer = 0
@@ -479,7 +482,7 @@ func (g *Game) updateAIHero() {
 			g.aiHeroRespawnTimer--
 			return
 		}
-		g.aiHero.x, g.aiHero.y = 720, 288
+		g.aiHero.x, g.aiHero.y = redHeroSpawnX, laneY
 		g.aiHero.health = 10
 		g.aiHero.threat = false
 		g.aiHero.active = true
@@ -535,7 +538,7 @@ func (g *Game) updatePlayerRespawn() {
 		g.playerRespawnTimer--
 		return
 	}
-	g.playerX, g.playerY = 496, 288
+	g.playerX, g.playerY = blueHeroSpawnX, laneY
 	g.playerHealth = maxHealth
 	g.playerActive = true
 	g.message = "Player chassis respawned."
