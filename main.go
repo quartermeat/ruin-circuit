@@ -18,7 +18,7 @@ const (
 	gridWidth    = 28
 	gridHeight   = 14
 	tileSize     = 32
-	version      = "v0.8.0"
+	version      = "v0.8.1"
 	maxHealth    = 10
 )
 
@@ -252,8 +252,22 @@ func (g *Game) respec() {
 	g.autoAttackRanged = false
 	g.attackTarget = -1
 	g.hasTarget = false
+	g.resetEnemies()
 	g.showBuild = true
-	g.message = "Build reset. Choose the path when you are ready."
+	g.message = "Build reset. Enemies respawned. Choose the path when you are ready."
+}
+
+func (g *Game) resetEnemies() {
+	spawnPoints := [][2]float64{{220, 180}, {740, 170}, {700, 390}}
+	for index := range g.enemies {
+		enemy := &g.enemies[index]
+		enemy.x, enemy.y = spawnPoints[index][0], spawnPoints[index][1]
+		enemy.health = 3
+		enemy.threat = false
+		enemy.attackCD = 0
+		enemy.attackAnim = 0
+		enemy.active = true
+	}
 }
 
 func (g *Game) enemyAt(x, y float64) (int, bool) {
