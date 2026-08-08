@@ -19,7 +19,7 @@ const (
 	gridWidth      = 28
 	gridHeight     = 14
 	tileSize       = 32
-	version        = "v0.16.3"
+	version        = "v0.17.0"
 	maxHealth      = 10
 	maxTowerHP     = 20
 	towerRange     = 180.0
@@ -93,6 +93,8 @@ type Game struct {
 	enemyTowerHealth    int
 	playerTowerAttackCD int
 	enemyTowerAttackCD  int
+	won                 bool
+	lost                bool
 	aiHero              AIHero
 	matchFrames         int
 	aiHeroRespawnTimer  int
@@ -158,9 +160,13 @@ func (g *Game) Update() error {
 		*g = *NewGame()
 		return nil
 	}
+	if g.won || g.lost {
+		return nil
+	}
 	if g.inDungeon {
 		g.updateDungeon()
 		g.updateLaneBackground()
+		g.checkMatchEnd()
 		g.matchFrames++
 		return nil
 	}
@@ -327,6 +333,7 @@ func (g *Game) Update() error {
 	g.updateMinionWave()
 	g.updateTowerAttacks()
 	g.updateAIHero()
+	g.checkMatchEnd()
 	g.matchFrames++
 	if g.attackCooldown > 0 {
 		g.attackCooldown--
@@ -470,6 +477,22 @@ func (g *Game) Draw(screen *ebiten.Image) {
 	}
 	if g.inDungeon {
 		g.drawDungeon(screen)
+	}
+	if g.won || g.lost {
+		ebitenutil.DrawRect(screen, 210, 150, 540, 190, color.RGBA{6, 12, 20, 238})
+		ebitenutil.DrawRect(screen, 214, 154, 532, 182, color.RGBA{70, 160, 155, 180})
+		result := "VICTORY"
+		detail := "ENEMY TOWER DESTROYED"
+		message := "THE LANE IS YOURS"
+		if g.lost {
+			result = "DEFEAT"
+			detail = "ALLY TOWER DESTROYED"
+			message = "THE LANE IS LOST"
+		}
+		text.Draw(screen, result, basicfont.Face7x13, 448, 205, color.RGBA{255, 230, 150, 255})
+		text.Draw(screen, detail, basicfont.Face7x13, 366, 240, color.RGBA{190, 235, 225, 255})
+		text.Draw(screen, message, basicfont.Face7x13, 398, 270, color.RGBA{150, 220, 210, 255})
+		text.Draw(screen, "PRESS ESC TO START A NEW RUN", basicfont.Face7x13, 354, 310, color.RGBA{240, 216, 150, 255})
 	}
 }
 
@@ -761,6 +784,28 @@ func (g *Game) updateLaneBackground() {
 	g.updateMinionWave()
 	g.updateTowerAttacks()
 	g.updateAIHero()
+}
+
+func (g *Game) checkMatchEnd() {
+	if g.won || g.lost {
+		return
+	}
+	if g.enemyTowerHealth <= 0 {
+		g.enemyTowerHealth = 0
+		g.won = true
+		g.message = "Enemy tower destroyed. Victory achieved."
+	} else if g.playerTowerHealth <= 0 {
+		g.playerTowerHealth = 0
+		g.lost = true
+		g.message = "Ally tower destroyed. Defeat."
+	} else {
+		return
+	}
+	g.attackTower = false
+	g.attackHero = false
+	g.attackTargetIsCreep = false
+	g.portalTarget = false
+	g.hasTarget = false
 }
 
 func (g *Game) damageAIHeroFromCreep() {
@@ -1075,7 +1120,7 @@ func (g *Game) updateAutoAttack() {
 			g.enemyTowerHealth = 0
 			g.attackTower = false
 			g.hasTarget = false
-			g.message = "Enemy tower destroyed. Lane victory achieved."
+			g.checkMatchEnd()
 			return
 		}
 		g.message = fmt.Sprintf("Auto-attack hit enemy tower (%d health)", g.enemyTowerHealth)
