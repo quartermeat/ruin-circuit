@@ -18,7 +18,7 @@ const (
 	gridWidth    = 28
 	gridHeight   = 14
 	tileSize     = 32
-	version      = "v0.12.0"
+	version      = "v0.12.1"
 	maxHealth    = 10
 	maxTowerHP   = 20
 	towerRange   = 180.0
@@ -95,9 +95,9 @@ func NewGame() *Game {
 		playerX: 496,
 		playerY: 288,
 		enemies: []Enemy{
-			{x: 220, y: 180, name: "scavenger drone", health: 3, active: true},
-			{x: 740, y: 170, name: "scrap hound", health: 3, active: true},
-			{x: 700, y: 390, name: "vault sentinel", health: 3, active: true},
+			{x: 740, y: 270, name: "scavenger drone", health: 3, active: true},
+			{x: 760, y: 288, name: "scrap hound", health: 3, active: true},
+			{x: 780, y: 306, name: "vault sentinel", health: 3, active: true},
 		},
 		minions: []Minion{
 			{x: 150, y: 270, health: 2, active: true},
@@ -116,6 +116,7 @@ func NewGame() *Game {
 		portals:           []Portal{{x: 470, y: 400, name: "SUNKEN ARCHIVE"}},
 		attackTarget:      -1,
 		playerHealth:      maxHealth,
+		showBuild:         true,
 		message:           "Right-click to move. Open the workbench and choose the path.",
 	}
 }
@@ -141,6 +142,18 @@ func (g *Game) Update() error {
 			g.autoAttackRanged = true
 			g.message = "Path chosen: ranged auto-attack online. Keep your distance."
 		}
+	}
+	if inpututil.IsKeyJustPressed(ebiten.KeyTab) {
+		if g.showBuild {
+			g.showBuild = false
+			g.message = "Workbench closed. Lane simulation resumed."
+		} else {
+			g.respec()
+		}
+		return nil
+	}
+	if g.showBuild {
+		return nil
 	}
 	if inpututil.IsMouseButtonJustPressed(ebiten.MouseButtonRight) {
 		mouseX, mouseY := ebiten.CursorPosition()
@@ -212,14 +225,6 @@ func (g *Game) Update() error {
 	}
 	if g.attackAnimation > 0 {
 		g.attackAnimation--
-	}
-	if inpututil.IsKeyJustPressed(ebiten.KeyTab) {
-		if g.showBuild {
-			g.showBuild = false
-			g.message = "Workbench closed."
-		} else {
-			g.respec()
-		}
 	}
 	for key, label := range map[ebiten.Key]string{
 		ebiten.KeyQ: "Q: primary ability slot",
@@ -350,11 +355,11 @@ func (g *Game) respec() {
 	g.hasTarget = false
 	g.resetEnemies()
 	g.showBuild = true
-	g.message = "Build reset. Enemies respawned. Choose the path when you are ready."
+	g.message = "Build reset. Enemies respawned. Choose the path before entering the lane."
 }
 
 func (g *Game) resetEnemies() {
-	spawnPoints := [][2]float64{{220, 180}, {740, 170}, {700, 390}}
+	spawnPoints := [][2]float64{{740, 270}, {760, 288}, {780, 306}}
 	for index := range g.enemies {
 		enemy := &g.enemies[index]
 		enemy.x, enemy.y = spawnPoints[index][0], spawnPoints[index][1]
