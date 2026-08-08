@@ -18,9 +18,10 @@ const (
 	gridWidth    = 28
 	gridHeight   = 14
 	tileSize     = 32
-	version      = "v0.11.1"
+	version      = "v0.12.0"
 	maxHealth    = 10
 	maxTowerHP   = 20
+	towerRange   = 180.0
 )
 
 var ruinWalls = [][4]float64{}
@@ -58,33 +59,35 @@ type AIHero struct {
 }
 
 type Game struct {
-	playerX, playerY   float64
-	targetX, targetY   float64
-	hasTarget          bool
-	path               []Cell
-	pathIndex          int
-	enemies            []Enemy
-	minions            []Minion
-	enemyMinions       []Minion
-	minionSpawnTimer   int
-	playerTowerHealth  int
-	enemyTowerHealth   int
-	aiHero             AIHero
-	portals            []Portal
-	inDungeon          bool
-	showBuild          bool
-	autoAttackPicked   bool
-	autoAttackRanged   bool
-	attackTarget       int
-	attackCooldown     int
-	attackAnimation    int
-	attackStartX       float64
-	attackStartY       float64
-	attackEndX         float64
-	attackEndY         float64
-	attackVisualRanged bool
-	playerHealth       int
-	message            string
+	playerX, playerY    float64
+	targetX, targetY    float64
+	hasTarget           bool
+	path                []Cell
+	pathIndex           int
+	enemies             []Enemy
+	minions             []Minion
+	enemyMinions        []Minion
+	minionSpawnTimer    int
+	playerTowerHealth   int
+	enemyTowerHealth    int
+	playerTowerAttackCD int
+	enemyTowerAttackCD  int
+	aiHero              AIHero
+	portals             []Portal
+	inDungeon           bool
+	showBuild           bool
+	autoAttackPicked    bool
+	autoAttackRanged    bool
+	attackTarget        int
+	attackCooldown      int
+	attackAnimation     int
+	attackStartX        float64
+	attackStartY        float64
+	attackEndX          float64
+	attackEndY          float64
+	attackVisualRanged  bool
+	playerHealth        int
+	message             string
 }
 
 func NewGame() *Game {
@@ -110,7 +113,7 @@ func NewGame() *Game {
 		playerTowerHealth: maxTowerHP,
 		enemyTowerHealth:  maxTowerHP,
 		aiHero:            AIHero{x: 720, y: 288, health: 10},
-		portals:           []Portal{{x: 470, y: 288, name: "SUNKEN ARCHIVE"}},
+		portals:           []Portal{{x: 470, y: 400, name: "SUNKEN ARCHIVE"}},
 		attackTarget:      -1,
 		playerHealth:      maxHealth,
 		message:           "Right-click to move. Open the workbench and choose the path.",
@@ -202,6 +205,7 @@ func (g *Game) Update() error {
 	g.updateAutoAttack()
 	g.updateEnemyAttacks()
 	g.updateMinionWave()
+	g.updateTowerAttacks()
 	g.updateAIHero()
 	if g.attackCooldown > 0 {
 		g.attackCooldown--
@@ -373,6 +377,8 @@ func (g *Game) resetEnemies() {
 		{x: 810, y: 306, health: 2, active: true},
 	}
 	g.minionSpawnTimer = 240
+	g.playerTowerAttackCD = 0
+	g.enemyTowerAttackCD = 0
 	g.aiHero = AIHero{x: 720, y: 288, health: 10}
 }
 
@@ -474,6 +480,43 @@ func (g *Game) updateMinionWave() {
 		g.playerTowerHealth = 0
 		g.message = "Ally tower destroyed. The lane is lost."
 	}
+}
+
+func (g *Game) updateTowerAttacks() {
+	if g.playerTowerAttackCD > 0 {
+		g.playerTowerAttackCD--
+	}
+	if g.enemyTowerAttackCD > 0 {
+		g.enemyTowerAttackCD--
+	}
+	if g.playerTowerHealth > 0 && g.playerTowerAttackCD == 0 && attackNearestMinion(g.enemyMinions, 96) {
+		g.playerTowerAttackCD = 30
+	}
+	if g.enemyTowerHealth > 0 && g.enemyTowerAttackCD == 0 && attackNearestMinion(g.minions, 864) {
+		g.enemyTowerAttackCD = 30
+	}
+}
+
+func attackNearestMinion(minions []Minion, towerX float64) bool {
+	target := -1
+	bestDistance := towerRange
+	for index, minion := range minions {
+		if !minion.active {
+			continue
+		}
+		distance := math.Abs(minion.x - towerX)
+		if distance <= bestDistance {
+			target, bestDistance = index, distance
+		}
+	}
+	if target < 0 {
+		return false
+	}
+	minions[target].health--
+	if minions[target].health <= 0 {
+		minions[target].active = false
+	}
+	return true
 }
 
 func (g *Game) activeMinions() int {
