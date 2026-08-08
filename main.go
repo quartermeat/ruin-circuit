@@ -18,7 +18,7 @@ const (
 	gridWidth    = 28
 	gridHeight   = 14
 	tileSize     = 32
-	version      = "v0.11.0"
+	version      = "v0.11.1"
 	maxHealth    = 10
 	maxTowerHP   = 20
 )
@@ -249,9 +249,9 @@ func (g *Game) Draw(screen *ebiten.Image) {
 		ebitenutil.DrawRect(screen, portal.x-8, portal.y-8, 16, 16, color.RGBA{210, 130, 245, 230})
 		text.Draw(screen, "PORTAL", basicfont.Face7x13, int(portal.x)-21, int(portal.y)+28, color.RGBA{210, 160, 245, 255})
 	}
-	ebitenutil.DrawRect(screen, g.aiHero.x-10, g.aiHero.y-10, 20, 20, color.RGBA{190, 120, 210, 255})
-	ebitenutil.DrawRect(screen, g.aiHero.x-5, g.aiHero.y-16, 10, 5, color.RGBA{240, 190, 245, 255})
-	text.Draw(screen, "AI HERO", basicfont.Face7x13, int(g.aiHero.x)-22, int(g.aiHero.y)-22, color.RGBA{225, 175, 240, 255})
+	ebitenutil.DrawRect(screen, g.aiHero.x-10, g.aiHero.y-10, 20, 20, color.RGBA{190, 70, 80, 255})
+	ebitenutil.DrawRect(screen, g.aiHero.x-5, g.aiHero.y-16, 10, 5, color.RGBA{250, 170, 140, 255})
+	text.Draw(screen, "ENEMY HERO", basicfont.Face7x13, int(g.aiHero.x)-30, int(g.aiHero.y)-22, color.RGBA{245, 140, 145, 255})
 	for _, minion := range g.minions {
 		if !minion.active {
 			continue
@@ -389,13 +389,13 @@ func (g *Game) updateAIHero() {
 	if g.aiHero.attackCD > 0 {
 		g.aiHero.attackCD--
 	}
-	if g.aiHero.x < 825 {
-		g.aiHero.x += 0.55
+	if g.aiHero.x > 150 {
+		g.aiHero.x -= 0.55
 		return
 	}
-	if g.enemyTowerHealth > 0 && g.aiHero.attackCD == 0 {
+	if g.playerTowerHealth > 0 && g.aiHero.attackCD == 0 {
 		g.aiHero.attackCD = 45
-		g.enemyTowerHealth--
+		g.playerTowerHealth--
 	}
 }
 
@@ -449,6 +449,9 @@ func (g *Game) updateMinionWave() {
 		minion := &g.enemyMinions[index]
 		if !minion.active {
 			continue
+		}
+		if minion.attackCD > 0 {
+			minion.attackCD--
 		}
 		if g.closestAllyMinion(index) >= 0 && math.Abs(g.minions[g.closestAllyMinion(index)].x-minion.x) <= 28 {
 			continue
