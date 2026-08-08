@@ -19,11 +19,12 @@ const (
 	gridWidth      = 56
 	gridHeight     = 28
 	tileSize       = 16
-	version        = "v0.17.1"
+	version        = "v0.17.2"
 	maxHealth      = 10
 	maxTowerHP     = 20
 	towerRange     = 180.0
 	creepHeroRange = 100.0
+	towerHealRange = 120.0
 	laneY          = 288.0
 	blueHeroSpawnX = 150.0
 	redHeroSpawnX  = 810.0
@@ -957,6 +958,14 @@ func (g *Game) updateTowerAttacks() {
 	}
 	if g.enemyTowerHealth > 0 && g.enemyTowerAttackCD == 0 && attackNearestMinion(g.minions, 864) {
 		g.enemyTowerAttackCD = 30
+	}
+	if g.matchFrames%30 == 0 {
+		if !g.inDungeon && g.playerActive && g.playerTowerHealth > 0 && g.playerHealth < maxHealth && math.Hypot(g.playerX-blueHeroSpawnX, g.playerY-laneY) <= towerHealRange {
+			g.playerHealth++
+		}
+		if !g.aiHero.inDungeon && g.aiHero.active && g.enemyTowerHealth > 0 && g.aiHero.health < maxHealth && math.Hypot(g.aiHero.x-redHeroSpawnX, g.aiHero.y-laneY) <= towerHealRange {
+			g.aiHero.health++
+		}
 	}
 }
 

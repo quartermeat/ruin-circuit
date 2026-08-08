@@ -152,3 +152,5 @@ The portal only transitions the player when the portal is explicitly targeted wi
 Destroying either tower now triggers a persistent match end state: `YOU WON` when the enemy tower falls or `YOU LOST` when the blue tower falls. The match freezes with a result overlay, and `Esc` returns to the starting auto-attack selection/workbench for a new run.
 
 Click-to-move pathfinding now uses a 16-pixel navigation grid across the same world bounds. The cells are roughly half the size of a combat hero, giving movement and routing finer resolution.
+
+Heroes recover one health every 30 frames while within 120 pixels of their living allied tower. This applies to the player at the blue tower and the AI hero at the red tower, and pauses while either hero is inside a dungeon.
