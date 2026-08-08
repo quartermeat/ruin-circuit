@@ -95,4 +95,4 @@ Open `http://127.0.0.1:8080/`. Use `-Address "127.0.0.1:8090"` if the default po
 
 The launcher cache-busts the WASM URL from the version in `main.go`, and the same version is visible in the game HUD.
 
-The build workbench now has an always-available RESPEC button. Respec is free and returns the build to `CHOOSE THE PATH` until the first auto-attack chassis is selected, keeping experimentation central to the prototype.
+The build workbench now has an always-available RESPEC button. Respec is free, opens the workbench immediately, and returns the build to `CHOOSE THE PATH` until the first auto-attack chassis is selected, keeping experimentation central to the prototype.

@@ -18,7 +18,7 @@ const (
 	gridWidth    = 28
 	gridHeight   = 14
 	tileSize     = 32
-	version      = "v0.2.0"
+	version      = "v0.2.1"
 )
 
 var ruinWalls = [][4]float64{{90, 90, 180, 18}, {90, 90, 18, 115}, {680, 80, 190, 18}, {850, 80, 18, 130}, {330, 420, 260, 18}, {330, 350, 18, 88}}
@@ -181,6 +181,7 @@ func (g *Game) Draw(screen *ebiten.Image) {
 
 func (g *Game) respec() {
 	g.autoAttackPicked = false
+	g.showBuild = true
 	g.message = "Build reset. Choose the path when you are ready."
 }
 
