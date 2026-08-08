@@ -144,3 +144,5 @@ Reaching the lane portal physically sends the player into an escape dungeon and 
 Right-clicking an enemy now creates a persistent attack order: the chassis follows the moving target, stops at the selected attack range, and continues auto-attacking. Right-clicking open ground cancels the attack order and returns to movement.
 
 The enemy tower now uses the same targeting flow: right-click it after choosing a path, move into range, and auto-attack until it is destroyed or another movement command cancels the order.
+
+Hero respawn context now follows the surviving hero's current world layer. If one hero dies while the other is in a dungeon, the dead hero respawns in its corresponding dungeon instance at its side's dungeon entry. If the survivor is in the lane, the dead hero respawns at its alliance tower.
