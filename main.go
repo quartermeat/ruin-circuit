@@ -19,7 +19,7 @@ const (
 	gridWidth      = 28
 	gridHeight     = 14
 	tileSize       = 32
-	version        = "v0.16.2"
+	version        = "v0.16.3"
 	maxHealth      = 10
 	maxTowerHP     = 20
 	towerRange     = 180.0
@@ -80,49 +80,49 @@ type DungeonCreep struct {
 }
 
 type Game struct {
-	playerX, playerY       float64
-	targetX, targetY       float64
-	hasTarget              bool
-	path                   []Cell
-	pathIndex              int
-	enemies                []Enemy
-	minions                []Minion
-	enemyMinions           []Minion
-	minionSpawnTimer       int
-	playerTowerHealth      int
-	enemyTowerHealth       int
-	playerTowerAttackCD    int
-	enemyTowerAttackCD     int
-	aiHero                 AIHero
-	matchFrames            int
-	aiHeroRespawnTimer     int
-	portals                []Portal
-	inDungeon              bool
-	dungeonX               float64
-	dungeonY               float64
-	dungeonTargetX         float64
-	dungeonTargetY         float64
-	dungeonHasTarget       bool
-	dungeonCreeps          []DungeonCreep
-	showBuild              bool
-	autoAttackPicked       bool
-	autoAttackRanged       bool
-	attackTarget           int
-	attackTargetIsCreep    bool
-	attackHero             bool
-	attackTower            bool
-	portalTarget           bool
-	attackCooldown         int
-	attackAnimation        int
-	attackStartX           float64
-	attackStartY           float64
-	attackEndX             float64
-	attackEndY             float64
-	attackVisualRanged     bool
-	playerHealth           int
-	playerActive           bool
-	playerRespawnTimer     int
-	message                string
+	playerX, playerY    float64
+	targetX, targetY    float64
+	hasTarget           bool
+	path                []Cell
+	pathIndex           int
+	enemies             []Enemy
+	minions             []Minion
+	enemyMinions        []Minion
+	minionSpawnTimer    int
+	playerTowerHealth   int
+	enemyTowerHealth    int
+	playerTowerAttackCD int
+	enemyTowerAttackCD  int
+	aiHero              AIHero
+	matchFrames         int
+	aiHeroRespawnTimer  int
+	portals             []Portal
+	inDungeon           bool
+	dungeonX            float64
+	dungeonY            float64
+	dungeonTargetX      float64
+	dungeonTargetY      float64
+	dungeonHasTarget    bool
+	dungeonCreeps       []DungeonCreep
+	showBuild           bool
+	autoAttackPicked    bool
+	autoAttackRanged    bool
+	attackTarget        int
+	attackTargetIsCreep bool
+	attackHero          bool
+	attackTower         bool
+	portalTarget        bool
+	attackCooldown      int
+	attackAnimation     int
+	attackStartX        float64
+	attackStartY        float64
+	attackEndX          float64
+	attackEndY          float64
+	attackVisualRanged  bool
+	playerHealth        int
+	playerActive        bool
+	playerRespawnTimer  int
+	message             string
 }
 
 func NewGame() *Game {
@@ -318,7 +318,7 @@ func (g *Game) Update() error {
 			}
 		}
 	}
-	if g.playerActive && g.portalAtPlayer() {
+	if g.playerActive && g.portalTarget && g.portalAtPlayer() {
 		g.enterDungeon()
 		return nil
 	}
